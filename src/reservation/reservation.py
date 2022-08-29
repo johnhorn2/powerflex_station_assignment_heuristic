@@ -13,5 +13,6 @@ class Reservation(BaseModel):
     departure_timestamp_utc: datetime
     vehicle_type: str
     state_of_charge: float
+    assigned_vehicle_id: int = None
 
 
