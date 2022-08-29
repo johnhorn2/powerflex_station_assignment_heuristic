@@ -1,10 +1,14 @@
-class Station:
+from pydantic import BaseModel
+from typing import Optional
 
-    def __init__(self, id, type, max_pow_kw, vehicle=None):
-        self.type = type
-        self.id = id
-        self.connected_vehicle = vehicle
-        self.max_pow_kw
+from src.vehicle.vehicle import Vehicle
+
+
+class Station(BaseModel):
+    id: int
+    type: str
+    connected_vehicle_id: int = None
+    max_pow_kw: float
 
     def is_l2(self):
         return self.type == 'L2'

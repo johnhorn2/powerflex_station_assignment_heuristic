@@ -1,20 +1,25 @@
-class Vehicle():
+from pydantic import BaseModel
 
-    def __init__(self, id, station_network, connected_station=None):
-        self.id = id
-        self.conected_station = connected_station
-        self.station_network = station_network
 
-    @property
-    def connected(self):
-        return self.connected_station == None
+class Vehicle(BaseModel):
+    id: int
+    connected_station: int
+    type: str
+    state_of_charge: float
 
-    def plugin(self, station):
-        self.connected_station = station.id
-        station.connected_vehicle = self.id
+    def plugin(self, station_id: int):
+        self.connected_station = station_id
+        # log which vehicle the evse is plugged to
+        for station in self.depot.stations:
+            if station.id == station_id:
+                station.connected_vehicle = self.id
 
     def unplug(self):
-        self.connected_station = None
+        # unassign vehicle
+        for station_idx, station in enumerate(self.depot.stations):
+            if station.id == self.station.connected_vehicle_id:
+                # unplug vehicle and remove assignment
+                self.depot.stations[station_idx].connected_vehicle_id = None
 
     def prefer_l2(self):
         l2_available, station_id = self.station_network.l2_is_available()
