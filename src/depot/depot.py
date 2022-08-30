@@ -7,15 +7,26 @@ import pydantic
 from src.station.station import Station
 from src.parking_lot.parking_lot import ParkingLot
 from src.vehicle.vehicle import Vehicle
-from src.reservation.reservation import Reservation
+from src.schedule.schedule import Schedule
 
 
 class Depot:
     stations: Optional[Dict[int: Station]] = {}
     vehicles: Optional[Dict[int: Vehicle]] = {}
-    reservations: Optional[ Dict[int: Reservation]] = {}
+    walk_in_pool: Optional[Dict[int: Vehicle]] = {}
+    schedule: Schedule
     parking_lot: ParkingLot
     minimum_ready_vehicle_pool: int
+    l2_charging_rate_kw: float
+    dcfc_charging_rate_kw: float
+
+
+    def walk_in_pool_meets_minimum_critiera(self):
+        walk_in_ready = [vehicle for vehicle in self.walk_in_pool if vehicle.state_of_charge >= 0.8]
+        if len(walk_in_ready) > self.minimum_ready_vehicle_pool:
+            return True
+        else:
+            return False
 
     def l2_is_available(self):
         available_l2_station = self.get_available_l2_station()
