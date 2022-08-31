@@ -26,43 +26,65 @@ class Scenario(BaseModel):
     def intialize(self):
         self.depot = self.build_depot()
         n_days = (math.ceil(self.config.horizon_length_hours/24))
-        n_walk_ins_per_day = self.get_n_walk_ins_per_day(n_days)
-        daily_walkin_bootsraps = self.get_daily_walk_ins(n_walk_ins_per_day, n_days)
+
+        # pre-calculate random walk ins
+        n_walk_ins_per_day = self.get_n_samples_per_day(n_days, 'walk_in')
+        daily_walk_ins = self.get_daily_samples(n_walk_ins_per_day, n_days, 'walk_in')
+
+        # pre-calculate random reservations
+        n_reservations_per_day = self.get_n_samples_per_day(n_days, 'reservation')
+        daily_reservations = self.get_daily_samples(n_reservations_per_day, n_days, 'reservation')
+
         print('init complete')
 
-    def get_n_walk_ins_per_day(self, n_days):
-        # random number of walk ins per day
-        n_walk_ins = np.random.normal(
-            loc=self.config.random_parameters['mean_walk_ins_per_day'],
-            scale=self.config.random_parameters['stdev_walk_ins_per_day'],
+    def get_n_samples_per_day(self, n_days, type):
+        # random samples per day
+        if type == 'walk_in':
+            loc_name = 'mean_walk_ins_per_day'
+            scale_name = 'stdev_walk_ins_per_day'
+        elif type == 'reservation':
+            loc_name = 'mean_reservations_per_day'
+            scale_name = 'stdev_reservations_per_day'
+
+
+        n_samples = np.random.normal(
+            loc=self.config.random_parameters[loc_name],
+            scale=self.config.random_parameters[scale_name],
             # ceiling number of days
             size=n_days
         )
         #replace negative values with zero
-        n_walk_ins[n_walk_ins < 0] = 0
+        n_samples[n_samples < 0] = 0
 
-        # round to int walk ins per day
-        n_walk_ins = (n_walk_ins).astype(int)
+        # round to samples per day
+        n_samples= (n_samples).astype(int)
 
-        return n_walk_ins
+        return n_samples
 
-    def get_daily_walk_ins(self, n_walk_ins_per_day, n_days):
+    def get_daily_samples(self, n_samples_per_day, n_days, type):
 
-        daily_walk_ins = []
+        if type == 'walk_in':
+            loc_name = 'mean_walk_in_hour_of_day'
+            scale_name = 'stdev_walk_in_hours'
+        elif type == 'reservation':
+            loc_name = 'mean_vehicle_departure_hour_of_day'
+            scale_name = 'stdev_vehicle_departure_hours'
+
+        daily_samples = []
         for day in range(0, n_days):
 
-            walk_in_samples = np.random.normal(
-                loc=self.config.random_parameters['mean_walk_in_hour_of_day'],
-                scale=self.config.random_parameters['stdev_walk_in_hours'],
-                size=n_walk_ins_per_day[day]
+            samples = np.random.normal(
+                loc=self.config.random_parameters[loc_name],
+                scale=self.config.random_parameters[scale_name],
+                size=n_samples_per_day[day]
             )
             # round walk in samples to hour of day
             #min is 0 and max is 24
-            walk_in_samples[walk_in_samples < 0] = 0
-            walk_in_samples[walk_in_samples > 23] = 2323
-            daily_walk_ins.append(walk_in_samples)
+            samples[samples < 0] = 0
+            samples[samples > 23] = 23
+            daily_samples.append(samples)
 
-        return daily_walk_ins
+        return daily_samples
 
     def build_depot(self):
         # the folling are attribute that live within depot
