@@ -2,11 +2,6 @@
  "horizon_length_hours": 48,
  "interval_seconds": 900,
 
-  "mean_vehicle_scan_hour_of_day": 16,
-  "stdev_vehicle_scan_hours": 3,
-  "mean_vehicles_scanned_per_day": 12,
-  "stdev_vehicles_scanned_per_day": 3,
-
   "mean_walk_in_hour_of_day": 10,
   "stdev_walk_in_hours": 2,
   "mean_walk_ins_per_day": 3,
