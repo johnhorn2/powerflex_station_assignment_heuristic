@@ -1,7 +1,4 @@
 from pydantic import BaseModel
-from typing import Optional
-
-from src.vehicle.vehicle import Vehicle
 
 
 class Station(BaseModel):

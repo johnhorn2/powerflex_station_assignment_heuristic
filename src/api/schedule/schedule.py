@@ -1,8 +1,7 @@
-from collections import namedtuple
 from pydantic import BaseModel
-from typing import List, Dict
+from typing import Dict
 
-from src.reservation.reservation import Reservation
+from src.api.reservation.reservation import Reservation
 
 
 class Schedule(BaseModel):

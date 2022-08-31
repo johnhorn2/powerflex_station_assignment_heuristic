@@ -1,12 +1,13 @@
 import json
 
-from src.scenario.scenario import Scenario
-from src.scenario.scenario_config import ScenarioConfig
+from src.simulator.simulator.simulator import Simulator
+from src.simulator.simulator_config.simulator_config import SimulatorConfig
 
-with open('configs/10_vehicles_10_L2_2_DCFC.json') as f:
+with open('simulator/simulator_config/configs/2days_15min_40res_per_day.json') as f:
     config = json.load(f)
 
-scenario_config = ScenarioConfig(**config)
-scenario = Scenario(config=scenario_config)
-scenario.intialize()
-print('fin init')
+scenario_config = SimulatorConfig(**config)
+scenario = Simulator(config=scenario_config)
+scenario.run()
+print('simulation complete')
+

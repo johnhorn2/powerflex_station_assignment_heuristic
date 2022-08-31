@@ -1,11 +1,6 @@
 from datetime import datetime
-from typing import Optional, List
 
 from pydantic import BaseModel
-
-from src.vehicle.vehicle import Vehicle
-from src.station.station import Station
-
 
 
 class Reservation(BaseModel):
