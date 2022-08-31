@@ -5,9 +5,8 @@ from typing import List, Dict
 from src.reservation.reservation import Reservation
 
 
-
 class Schedule(BaseModel):
-    reservations: Dict[int: Reservation] = None
+    reservations: Dict[int, Reservation] = None
 
     def get_unassigned_reservations(self):
         unassigned_reservations = []

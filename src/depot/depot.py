@@ -2,23 +2,22 @@ from collections import namedtuple
 from typing import List, Optional, Dict
 
 
-import pydantic
+
+from pydantic import BaseModel
 
 from src.station.station import Station
-from src.parking_lot.parking_lot import ParkingLot
 from src.vehicle.vehicle import Vehicle
 from src.schedule.schedule import Schedule
 
 
-class Depot:
-    stations: Optional[Dict[int: Station]] = {}
-    vehicles: Optional[Dict[int: Vehicle]] = {}
-    walk_in_pool: Optional[Dict[int: Vehicle]] = {}
+class Depot(BaseModel):
+    stations: Optional[Dict[int, Station]] = {}
+    vehicles: Optional[Dict[int, Vehicle]] = {}
+    walk_in_pool: Optional[Dict[int, Vehicle]] = {}
     schedule: Schedule
-    parking_lot: ParkingLot
-    minimum_ready_vehicle_pool: int
-    l2_charging_rate_kw: float
-    dcfc_charging_rate_kw: float
+    minimum_ready_vehicle_pool: Dict
+    l2_charging_rate_kw: float = 12
+    dcfc_charging_rate_kw: float = 150
 
 
     def walk_in_pool_meets_minimum_critiera(self):
@@ -57,3 +56,15 @@ class Depot:
                 return station.id
         #No DCFC available
         return None
+
+    def get_walk_in_ready_vehicles(self, vehicle_class: str = None):
+        pass
+
+    def walk_in_available(self, vehicle_class: str = None):
+        pass
+
+    def can_free_up_dcfc(self, incoming_vehicle_id: int):
+        pass
+
+    def get_free_up_dcfc_instructions(self, incoming_vehicle_id: int):
+        pass

@@ -1,8 +1,16 @@
 {
  "horizon_length_hours": 24,
  "horizon_interval_seconds": 900,
- "minimum_ready_vehicle_pool": 2
- "n_vehicles": 10,
+ "minimum_ready_vehicle_pool": {
+   "sedan": 3,
+   "suv": 1,
+   "crossover": 1
+ },
+ "vehicles": {
+   "sedan": {"n": 10, "kwh_capacity": 40},
+   "suv":  {"n": 10, "kwh_capacity": 60},
+   "crossover": {"n": 20, "kwh_capacity": 50}
+ },
  "n_l2_stations": 10,
  "n_dcfc_stations": 2,
  "random_parameters": {
@@ -18,7 +26,10 @@
 
     "mean_init_vehicle_soc": 0.8,
     "stdev_init_vehicle_soc": 0.2,
+
     "mean_vehicle_departure_hour_of_day": 10,
-    "stdev_vehicle_departure_hours: 2",
+    "stdev_vehicle_departure_hours": 2,
+    "mean_reservations_per_day": 40,
+    "stdev_reservations_per_day": 5
    }
 }

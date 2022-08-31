@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class Vehicle(BaseModel):
     id: int
-    connected_station_id: int
+    connected_station_id: int = None
     type: str
     state_of_charge: float
     energy_capacity_kwh: int
