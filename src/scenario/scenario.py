@@ -1,4 +1,5 @@
 from datetime import datetime
+import math
 import random
 
 import numpy as np
@@ -24,7 +25,44 @@ class Scenario(BaseModel):
 
     def intialize(self):
         self.depot = self.build_depot()
+        n_days = (math.ceil(self.config.horizon_length_hours/24))
+        n_walk_ins_per_day = self.get_n_walk_ins_per_day(n_days)
+        daily_walkin_bootsraps = self.get_daily_walk_ins(n_walk_ins_per_day, n_days)
+        print('init complete')
 
+    def get_n_walk_ins_per_day(self, n_days):
+        # random number of walk ins per day
+        n_walk_ins = np.random.normal(
+            loc=self.config.random_parameters['mean_walk_ins_per_day'],
+            scale=self.config.random_parameters['stdev_walk_ins_per_day'],
+            # ceiling number of days
+            size=n_days
+        )
+        #replace negative values with zero
+        n_walk_ins[n_walk_ins < 0] = 0
+
+        # round to int walk ins per day
+        n_walk_ins = (n_walk_ins).astype(int)
+
+        return n_walk_ins
+
+    def get_daily_walk_ins(self, n_walk_ins_per_day, n_days):
+
+        daily_walk_ins = []
+        for day in range(0, n_days):
+
+            walk_in_samples = np.random.normal(
+                loc=self.config.random_parameters['mean_walk_in_hour_of_day'],
+                scale=self.config.random_parameters['stdev_walk_in_hours'],
+                size=n_walk_ins_per_day[day]
+            )
+            # round walk in samples to hour of day
+            #min is 0 and max is 24
+            walk_in_samples[walk_in_samples < 0] = 0
+            walk_in_samples[walk_in_samples > 23] = 2323
+            daily_walk_ins.append(walk_in_samples)
+
+        return daily_walk_ins
 
     def build_depot(self):
         # the folling are attribute that live within depot
@@ -98,3 +136,12 @@ class Scenario(BaseModel):
         )
 
         return depot
+
+    def is_walk_in_random(self):
+        pass
+
+
+    def run(self):
+        # n_intervals = (self.config.horizon_length_hours*3600) / self.config.horizon_interval_seconds
+        # for interval in range(0, n_intervals):
+        pass

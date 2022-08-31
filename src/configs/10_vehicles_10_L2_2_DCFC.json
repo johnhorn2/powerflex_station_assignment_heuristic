@@ -1,5 +1,5 @@
 {
- "horizon_length_hours": 24,
+ "horizon_length_hours": 48,
  "horizon_interval_seconds": 900,
  "minimum_ready_vehicle_pool": {
    "sedan": 3,
