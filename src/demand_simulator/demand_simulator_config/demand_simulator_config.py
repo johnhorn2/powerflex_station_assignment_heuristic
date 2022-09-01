@@ -3,7 +3,7 @@ from typing import Dict
 from pydantic import BaseModel
 
 
-class SimulatorConfig(BaseModel):
+class DemandSimulatorConfig(BaseModel):
     horizon_length_hours: int
     interval_seconds: int
 

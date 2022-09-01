@@ -5,14 +5,13 @@ import uuid
 import numpy as np
 from pydantic import BaseModel
 
-from src.demand_simulator.demand_simulator_config.demand_simulator_config import SimulatorConfig
+from src.demand_simulator.demand_simulator_config.demand_simulator_config import DemandSimulatorConfig
 from src.mock_queue.mock_queue import MockQueue
 
 
-class Simulator(BaseModel):
-    config: SimulatorConfig
+class DemandSimulator(BaseModel):
+    config: DemandSimulatorConfig
     queue: MockQueue
-    current_datetime: datetime
 
     def get_event(self, type, current_datetime) -> int:
         if type == 'walk_in':
@@ -73,10 +72,10 @@ class Simulator(BaseModel):
 
         return reservation_list
 
-    def generate_reservations_24_hours_ahead(self):
+    def generate_reservations_24_hours_ahead(self, current_datetime):
         # if init the sim then generate the reservations 24 hours ahead
             # first 24 hours of reservations pre-populated
-            future_datetime = self.current_datetime
+            future_datetime = current_datetime
             reservation_list = []
             for interval in range(0, int((24*3600)/self.config.interval_seconds)):
                 # increment by timestep
@@ -89,28 +88,19 @@ class Simulator(BaseModel):
             return reservation_list
 
 
-    def run(self):
+    def get_demand_signal(self, current_datetime):
+        n_res = self.get_event('reservation', current_datetime)
 
-        n_intervals = int((self.config.horizon_length_hours * 3600) / self.config.interval_seconds)
-        for interval in range(0, n_intervals):
-            # increment by timestep
+        n_walk_ins = self.get_event('walk_in', current_datetime)
 
-            n_res = self.get_event('reservation', self.current_datetime)
+        # at midnight generate new batch of reservations
+        if current_datetime.hour == 0 and current_datetime.minute == 0 and current_datetime.second == 0:
+            reservations = self.generate_reservations_24_hours_ahead(current_datetime)
+            for reservation in reservations:
+                self.queue.reservation_events.append(reservation)
 
-            n_walk_ins = self.get_event('walk_in', self.current_datetime)
-
-            # at midnight generate new batch of reservations
-            if self.current_datetime.hour == 0 and self.current_datetime.minute == 0 and self.current_datetime.second == 0:
-                reservations = self.generate_reservations_24_hours_ahead()
-                for reservation in reservations:
-                    self.queue.reservation_events.append(reservation)
-
-
-            if n_walk_ins > 0:
-                # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time
-                walk_ins = self.get_reservations(n_res, self.current_datetime + timedelta(minutes=15))
-                for walk_in in walk_ins:
-                    self.queue.walk_in_events.append(walk_in)
-
-            # increment clock
-            self.current_datetime = self.current_datetime + timedelta(seconds=self.config.interval_seconds)
+        if n_walk_ins > 0:
+            # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time
+            walk_ins = self.get_reservations(n_res, current_datetime + timedelta(minutes=15))
+            for walk_in in walk_ins:
+                self.queue.walk_in_events.append(walk_in)
