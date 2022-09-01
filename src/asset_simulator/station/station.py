@@ -15,3 +15,9 @@ class Station(BaseModel):
 
     def is_available(self):
         return self.connected_vehicle == None
+
+    def plugin(self, vehicle_id):
+        self.connected_vehicle_id = vehicle_id
+
+    def unplug(self):
+        self.connected_vehicle_id = None

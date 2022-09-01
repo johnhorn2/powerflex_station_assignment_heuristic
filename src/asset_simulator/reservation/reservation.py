@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class Reservation(BaseModel):
-    id: int
+    id: str
     departure_timestamp_utc: datetime
     vehicle_type: str
     state_of_charge: float

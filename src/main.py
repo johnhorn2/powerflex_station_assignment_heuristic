@@ -11,23 +11,23 @@ from src.demand_simulator.demand_simulator_config.demand_simulator_config import
 
 
 class RuntimeEnvironment(BaseModel):
-    current_datetime: datetime
     mock_queue: MockQueue
     demand_simulator: DemandSimulator
-    depot: Depot
+    asset_simulator: Depot
 
     def run(self):
         interval_seconds = self.demand_simulator.config.interval_seconds
         horizon_length_hours = self.demand_simulator.config.horizon_length_hours
 
-
         n_intervals = int((horizon_length_hours * 3600) / interval_seconds)
         for interval in range(0, n_intervals):
 
-            self.demand_simulator.get_demand_signal(self.current_datetime)
+            self.demand_simulator.run_interval()
+            self.asset_simulator.run_interval()
 
             # increment clock
-            self.current_datetime = self.current_datetime + timedelta(seconds=interval_seconds)
+            self.demand_simulator.increment_interval()
+            self.asset_simulator.increment_interval()
 
 
 # setup mock queue
@@ -48,22 +48,22 @@ demand_simulator = DemandSimulator(config=demand_simulator_config, queue=mock_qu
 with open('asset_simulator/depot_config/configs/150_vehicles_10_L2_2_DCFC.json') as f:
     config = json.load(f)
 depot_config = DepotConfig(**config)
-depot = Depot.build_depot(depot_config)
+depot = Depot.build_depot(config=depot_config,queue=mock_queue)
+depot.initialize_plugins()
 
 # setup heuristic
-with open('heuristic/depot_config/configs/150_vehicles_10_L2_2_DCFC.json') as f:
-    config = json.load(f)
-depot_config = DepotConfig(**config)
-depot = Depot.build_depot(depot_config)
+# with open('heuristic/depot_config/configs/150_vehicles_10_L2_2_DCFC.json') as f:
+#     config = json.load(f)
+# depot_config = DepotConfig(**config)
+# depot = Depot.build_depot(depot_config)
 
 
 
 
 runtime = RuntimeEnvironment(
-    current_datetime=datetime(year=2022, month=1, day=1, hour=0),
     mock_queue=mock_queue,
     demand_simulator=demand_simulator,
-    depot=depot
+    asset_simulator=depot
 )
 
 runtime.run()

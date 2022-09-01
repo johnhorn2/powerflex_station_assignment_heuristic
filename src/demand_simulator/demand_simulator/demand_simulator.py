@@ -10,8 +10,13 @@ from src.mock_queue.mock_queue import MockQueue
 
 
 class DemandSimulator(BaseModel):
+    current_datetime: datetime = datetime(year=2022, month=1, day=1, hour=0)
     config: DemandSimulatorConfig
     queue: MockQueue
+
+    def increment_interval(self):
+        interval_seconds = self.config.interval_seconds
+        self.current_datetime = self.current_datetime + timedelta(seconds=interval_seconds)
 
     def get_event(self, type, current_datetime) -> int:
         if type == 'walk_in':
@@ -63,7 +68,7 @@ class DemandSimulator(BaseModel):
         for vehicle_type in vehicle_types:
             reservation_list.append(
                 {
-                    "id": uuid.uuid4(),
+                    "id": str(uuid.uuid4()),
                     "departure_timestamp_utc": res_datetime,
                     "vehicle_type": vehicle_type,
                     "state_of_charge": 0.8
@@ -88,19 +93,19 @@ class DemandSimulator(BaseModel):
             return reservation_list
 
 
-    def get_demand_signal(self, current_datetime):
-        n_res = self.get_event('reservation', current_datetime)
+    def run_interval(self):
+        n_res = self.get_event('reservation', self.current_datetime)
 
-        n_walk_ins = self.get_event('walk_in', current_datetime)
+        n_walk_ins = self.get_event('walk_in', self.current_datetime)
 
         # at midnight generate new batch of reservations
-        if current_datetime.hour == 0 and current_datetime.minute == 0 and current_datetime.second == 0:
-            reservations = self.generate_reservations_24_hours_ahead(current_datetime)
+        if self.current_datetime.hour == 0 and self.current_datetime.minute == 0 and self.current_datetime.second == 0:
+            reservations = self.generate_reservations_24_hours_ahead(self.current_datetime)
             for reservation in reservations:
                 self.queue.reservation_events.append(reservation)
 
         if n_walk_ins > 0:
             # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time
-            walk_ins = self.get_reservations(n_res, current_datetime + timedelta(minutes=15))
+            walk_ins = self.get_reservations(n_res, self.current_datetime + timedelta(minutes=15))
             for walk_in in walk_ins:
                 self.queue.walk_in_events.append(walk_in)

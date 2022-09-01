@@ -12,14 +12,28 @@ class Vehicle(BaseModel):
     status: str
     # ['parked' | 'charging' | 'finished_charging']
 
+    def is_plugged_in(self):
+        return isinstance(self.connected_station_id, int)
+
+    def update_status(self):
+        if self.is_plugged_in():
+            if self.state_of_charge < 1:
+                self.status = 'charging'
+            elif self.state_of_charge == 1:
+                self.status = 'finished_charging'
+        else:
+            # todo: need to determine if parked or out on a job
+            self.status == 'other'
+
+
+
     def plugin(self, station_id: int):
-        self.connected_station = station_id
-        # log which vehicle the evse is plugged to
-        self.depot.stations[station_id].connected_vehicle = self.id
+        self.connected_station_id = station_id
+        self.update_status()
 
     def unplug(self):
-        # unassign vehicle
-        self.depot.stations[self.connected_station_id].connected_vehicle = None
+        self.connected_station_id = None
+        self.update_status()
 
     def prefer_l2(self):
         l2_available, station_id = self.depot.l2_is_available()

@@ -1,4 +1,5 @@
 {
+ "interval_seconds": 900,
  "minimum_ready_vehicle_pool": {
    "sedan": 3,
    "suv": 1,
