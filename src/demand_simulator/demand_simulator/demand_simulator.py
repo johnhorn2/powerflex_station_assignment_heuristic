@@ -5,14 +5,14 @@ import uuid
 import numpy as np
 from pydantic import BaseModel
 
-from src.simulator.simulator_config.simulator_config import SimulatorConfig
+from src.demand_simulator.demand_simulator_config.demand_simulator_config import SimulatorConfig
 from src.mock_queue.mock_queue import MockQueue
 
 
 class Simulator(BaseModel):
     config: SimulatorConfig
     queue: MockQueue
-    current_datetime: datetime = datetime(year=2022, month=1, day=1, hour=0)
+    current_datetime: datetime
 
     def get_event(self, type, current_datetime) -> int:
         if type == 'walk_in':
@@ -67,8 +67,7 @@ class Simulator(BaseModel):
                     "id": uuid.uuid4(),
                     "departure_timestamp_utc": res_datetime,
                     "vehicle_type": vehicle_type,
-                    "state_of_charge": 0.8,
-                    "assigned_vehicle_id": None
+                    "state_of_charge": 0.8
                 }
             )
 

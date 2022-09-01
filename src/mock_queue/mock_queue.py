@@ -2,7 +2,7 @@ from typing import List, Dict
 
 from pydantic import BaseModel
 
-from src.api.reservation.reservation import Reservation
+from src.supply_simulator.reservation.reservation import Reservation
 
 
 class MockQueue(BaseModel):
