@@ -1,3 +1,4 @@
+from datetime import datetime
 import random
 from typing import Optional, Dict
 
@@ -25,24 +26,24 @@ class Depot(BaseModel):
     dcfc_charging_rate_kw: float = 150
 
     @classmethod
-    def build_depot(self):
+    def build_depot(cls, config):
         # the folling are attribute that live within depot
 
         # setup stations
         stations = {}
         station_id = -1
-        for l2_station in range(0, self.config.n_l2_stations):
+        for l2_station in range(0, config.n_l2_stations):
             station_id += 1
             stations[station_id] = (Station(id=station_id, type='L2'))
 
-        for dcfc_station in range(0, self.config.n_dcfc_stations):
+        for dcfc_station in range(0, config.n_dcfc_stations):
             station_id += 1
             stations[station_id] = (Station(id=station_id, type='DCFC'))
 
         # setup vehicles
         vehicles = {}
         vehicle_idx = -1
-        for vehicle_type, vehicle_settings in self.config.vehicles.items():
+        for vehicle_type, vehicle_settings in config.vehicles.items():
             for vehicle in range(0, vehicle_settings['n']):
                 vehicle_idx += 1
                 vehicle = Vehicle(
@@ -58,32 +59,8 @@ class Depot(BaseModel):
         # setup walk-in pool
         walk_in_pool = {}
 
-        # setup init schedule
-
-        # seed random
-        np.random.seed(seed=42)
-
-        n_init_reservations = self.config.mean_reservations_per_day
-
-        reservations = {}
-        for res_idx in range(0, n_init_reservations):
-            hour_depart = int(np.random.normal(
-                loc=self.config.mean_vehicle_departure_hour_of_day,
-                scale=self.config.stdev_vehicle_departure_hours,
-                size=1
-            ))
-
-            random_reservation_type_weights = [veh_settings['n'] for veh_settings in self.config.vehicles.values()]
-            reservations[res_idx] = \
-                Reservation(
-                    id=res_idx,
-                    departure_timestamp_utc=datetime(year=2022, month=1, day=1, hour=hour_depart),
-                    vehicle_type=random.choices(list(self.config.vehicles.keys()), weights=random_reservation_type_weights)[0],
-                    state_of_charge=0.8,
-                    assigned_vehicle_id=res_idx
-                )
-
-            schedule = Schedule(reservations=reservations)
+        # schedule = Schedule(reservations=reservations)
+        schedule = {}
 
 
 
@@ -92,7 +69,7 @@ class Depot(BaseModel):
             vehicles=vehicles,
             walk_in_pool=walk_in_pool,
             schedule=schedule,
-            minimum_ready_vehicle_pool=self.config.minimum_ready_vehicle_pool
+            minimum_ready_vehicle_pool=config.minimum_ready_vehicle_pool
         )
 
         return depot
