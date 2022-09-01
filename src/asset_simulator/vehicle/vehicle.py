@@ -12,6 +12,17 @@ class Vehicle(BaseModel):
     status: str
     # ['parked' | 'charging' | 'finished_charging']
 
+
+    def charge(self, seconds, power_kw):
+        hours = seconds/3600
+        charged_kwh = power_kw * hours
+        current_energy_kwh = self.state_of_charge * self.energy_capacity_kwh
+
+        # charge up to max capacity
+        new_energy_kwh = min(self.energy_capacity_kwh, current_energy_kwh + charged_kwh)
+        self.state_of_charge = new_energy_kwh / self.energy_capacity_kwh
+        self.update_status()
+
     def is_plugged_in(self):
         return isinstance(self.connected_station_id, int)
 

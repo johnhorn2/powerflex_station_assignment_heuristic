@@ -48,12 +48,24 @@ class Depot(BaseModel):
         # update vehicle scans
         # todo: make object class for this
 
+    def charge_vehicles(self):
+        plugged_in_vehicle_station = [(vehicle.id, vehicle.connected_station_id) for vehicle in self.vehicles.values() if vehicle.status == 'charging']
+        for vehicle_id, station_id in plugged_in_vehicle_station:
+            station_power_kw = self.stations[station_id].max_pow_kw
+            self.vehicles[vehicle_id].charge(self.interval_seconds, station_power_kw)
+
+    def depart_vehicles(self):
+        # if the current timestamp matches the departure AND vehicle_id matches reservation then unplug
+        #todo: we don't have vehicle assignments though because the heuristic does that
+        pass
+
     def run_interval(self):
 
         # collect any instructions from the queue
         self.pull_from_queue()
 
         # update assets based on those instructions
+        # many of these actions will come from the heuristic algorithm
         """
         plugin
         unplug
@@ -69,6 +81,9 @@ class Depot(BaseModel):
         charge any vehicles plugged in and not fully charged yet
         decrease soc of any vehicles out on a job based on interval
         """
+
+        self.depart_vehicles()
+        self.charge_vehicles()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
 

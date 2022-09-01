@@ -48,6 +48,9 @@ class DemandSimulator(BaseModel):
             size=n_events_per_day
         )
 
+        # in case random hour selected is negative
+        random_hour[random_hour < 0] = 0
+
         # assumes timesteps for simulations between 1 minute and 1 hour
         hour = current_datetime.hour
         min = current_datetime.minute
