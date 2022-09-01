@@ -9,5 +9,6 @@ class Reservation(BaseModel):
     vehicle_type: str
     state_of_charge: float
     assigned_vehicle_id: int = None
+    walk_in: bool = False
 
 

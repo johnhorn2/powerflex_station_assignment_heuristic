@@ -3,9 +3,11 @@ import json
 
 from pydantic import BaseModel
 
-from src.asset_simulator.depot_config.depot_config import DepotConfig
+from src.heuristic.depot_config.depot_config import AlgoDepotConfig
+from src.heuristic.depot.algo_depot import AlgoDepot
+from src.asset_simulator.depot_config.depot_config import AssetDepotConfig
+from src.asset_simulator.depot.asset_depot import AssetDepot
 from src.mock_queue.mock_queue import MockQueue
-from src.asset_simulator.depot.depot import Depot
 from src.demand_simulator.demand_simulator.demand_simulator import DemandSimulator
 from src.demand_simulator.demand_simulator_config.demand_simulator_config import DemandSimulatorConfig
 
@@ -13,7 +15,7 @@ from src.demand_simulator.demand_simulator_config.demand_simulator_config import
 class RuntimeEnvironment(BaseModel):
     mock_queue: MockQueue
     demand_simulator: DemandSimulator
-    asset_simulator: Depot
+    asset_simulator: AssetDepot
 
     def run(self):
         interval_seconds = self.demand_simulator.config.interval_seconds
@@ -34,7 +36,9 @@ class RuntimeEnvironment(BaseModel):
 mock_queue = MockQueue(
     scan_events=[],
     reservation_events=[],
-    walk_in_events=[]
+    walk_in_events=[],
+    vehicles=[],
+    stations=[]
 )
 
 # setup demand_simulator
@@ -47,9 +51,9 @@ demand_simulator = DemandSimulator(config=demand_simulator_config, queue=mock_qu
 # setup asset_simulator
 with open('asset_simulator/depot_config/configs/150_vehicles_10_L2_2_DCFC.json') as f:
     config = json.load(f)
-depot_config = DepotConfig(**config)
-depot = Depot.build_depot(config=depot_config,queue=mock_queue)
-depot.initialize_plugins()
+asset_depot_config = AssetDepotConfig(**config)
+asset_depot = AssetDepot.build_depot(config=asset_depot_config, queue=mock_queue)
+asset_depot.initialize_plugins()
 
 # setup heuristic
 # with open('heuristic/depot_config/configs/150_vehicles_10_L2_2_DCFC.json') as f:
@@ -63,7 +67,7 @@ depot.initialize_plugins()
 runtime = RuntimeEnvironment(
     mock_queue=mock_queue,
     demand_simulator=demand_simulator,
-    asset_simulator=depot
+    asset_simulator=asset_depot
 )
 
 runtime.run()

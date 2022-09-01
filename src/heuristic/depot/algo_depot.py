@@ -16,29 +16,31 @@ from src.asset_simulator.vehicle.vehicle import Vehicle
 from src.asset_simulator.schedule.schedule import Schedule
 
 
-class Depot(BaseModel):
+class AlgoDepot(BaseModel):
     stations: Optional[Dict[int, Station]] = {}
     vehicles: Optional[Dict[int, Vehicle]] = {}
     walk_in_pool: Optional[Dict[int, Vehicle]] = {}
-    schedule: Schedule
+    schedule: Schedule = {}
     minimum_ready_vehicle_pool: Dict
-    l2_charging_rate_kw: float = 12
-    dcfc_charging_rate_kw: float = 150
+    l2_charging_rate_kw: float
+    dcfc_charging_rate_kw: float
 
     @classmethod
     def build_depot(cls, config):
         # the folling are attribute that live within depot
+        l2_max_power_kw = config.l2_max_power_kw
+        dcfc_max_power_kw = config.dcfc_max_power_kw
 
         # setup stations
         stations = {}
         station_id = -1
         for l2_station in range(0, config.n_l2_stations):
             station_id += 1
-            stations[station_id] = (Station(id=station_id, type='L2'))
+            stations[station_id] = (Station(id=station_id, type='L2', max_power_kw=l2_max_power_kw))
 
         for dcfc_station in range(0, config.n_dcfc_stations):
             station_id += 1
-            stations[station_id] = (Station(id=station_id, type='DCFC'))
+            stations[station_id] = (Station(id=station_id, type='DCFC', max_power_kw=dcfc_max_power_kw))
 
         # setup vehicles
         vehicles = {}
@@ -64,7 +66,7 @@ class Depot(BaseModel):
 
 
 
-        depot = Depot(
+        depot = AlgoDepot(
             stations=stations,
             vehicles=vehicles,
             walk_in_pool=walk_in_pool,

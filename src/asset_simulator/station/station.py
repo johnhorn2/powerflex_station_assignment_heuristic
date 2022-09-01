@@ -5,7 +5,7 @@ class Station(BaseModel):
     id: int
     type: str
     connected_vehicle_id: int = None
-    max_pow_kw: float = 12.0
+    max_power_kw: float
 
     def is_l2(self):
         return self.type == 'L2'

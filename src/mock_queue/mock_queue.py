@@ -3,9 +3,13 @@ from typing import List, Dict
 from pydantic import BaseModel
 
 from src.asset_simulator.reservation.reservation import Reservation
+from src.asset_simulator.vehicle.vehicle import Vehicle
+from src.asset_simulator.station.station import Station
 
 
 class MockQueue(BaseModel):
-    scan_events: List[int]
-    reservation_events: List[Reservation]
-    walk_in_events: List[Reservation]
+    scan_events: List[str]
+    reservation_events: List[str]
+    walk_in_events: List[str]
+    vehicles: List[str]
+    stations: List[str]

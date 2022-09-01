@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import json
 import random
 import uuid
 
@@ -105,10 +106,13 @@ class DemandSimulator(BaseModel):
         if self.current_datetime.hour == 0 and self.current_datetime.minute == 0 and self.current_datetime.second == 0:
             reservations = self.generate_reservations_24_hours_ahead(self.current_datetime)
             for reservation in reservations:
-                self.queue.reservation_events.append(reservation)
+                # datetime is not serializable so need default = str
+                self.queue.reservation_events.append(json.dumps(reservation, default=str))
 
         if n_walk_ins > 0:
             # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time
             walk_ins = self.get_reservations(n_res, self.current_datetime + timedelta(minutes=15))
             for walk_in in walk_ins:
-                self.queue.walk_in_events.append(walk_in)
+                walk_in['walk_in'] = True
+                # datetime is not serializable so need default = str
+                self.queue.walk_in_events.append(json.dumps(walk_in, default=str))
