@@ -4,16 +4,16 @@ from typing import Optional, Dict
 
 import numpy as np
 
-from src.supply_simulator.reservation.reservation import Reservation
+from src.asset_simulator.reservation.reservation import Reservation
 
 
 
 
 from pydantic import BaseModel
 
-from src.supply_simulator.station.station import Station
-from src.supply_simulator.vehicle.vehicle import Vehicle
-from src.supply_simulator.schedule.schedule import Schedule
+from src.asset_simulator.station.station import Station
+from src.asset_simulator.vehicle.vehicle import Vehicle
+from src.asset_simulator.schedule.schedule import Schedule
 
 
 class Depot(BaseModel):
