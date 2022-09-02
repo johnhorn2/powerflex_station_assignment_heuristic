@@ -3,7 +3,6 @@ import json
 
 from pydantic import BaseModel
 
-from src.heuristic.depot_config.depot_config import AlgoDepotConfig
 from src.heuristic.depot.algo_depot import AlgoDepot
 from src.asset_simulator.depot_config.depot_config import AssetDepotConfig
 from src.asset_simulator.depot.asset_depot import AssetDepot
@@ -16,6 +15,7 @@ class RuntimeEnvironment(BaseModel):
     mock_queue: MockQueue
     demand_simulator: DemandSimulator
     asset_simulator: AssetDepot
+    heuristic: AlgoDepot
 
     def run(self):
         interval_seconds = self.demand_simulator.config.interval_seconds
@@ -56,10 +56,15 @@ asset_depot = AssetDepot.build_depot(config=asset_depot_config, queue=mock_queue
 asset_depot.initialize_plugins()
 
 # setup heuristic
-# with open('heuristic/depot_config/configs/150_vehicles_10_L2_2_DCFC.json') as f:
-#     config = json.load(f)
-# depot_config = DepotConfig(**config)
-# depot = Depot.build_depot(depot_config)
+# add a few more algo specific configs
+config['minimum_ready_vehicle_pool'] = {
+    'sedan': 2,
+    'crossover': 2,
+    'suv': 2
+}
+algo_depot_config = AssetDepotConfig(**config)
+
+algo_depot = AlgoDepot.build_depot(config=asset_depot_config, queue=mock_queue)
 
 
 
@@ -67,7 +72,8 @@ asset_depot.initialize_plugins()
 runtime = RuntimeEnvironment(
     mock_queue=mock_queue,
     demand_simulator=demand_simulator,
-    asset_simulator=asset_depot
+    asset_simulator=asset_depot,
+    heuristic=algo_depot
 )
 
 runtime.run()

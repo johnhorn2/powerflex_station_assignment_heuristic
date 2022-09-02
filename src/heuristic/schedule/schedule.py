@@ -3,9 +3,10 @@ from typing import Dict
 
 from src.asset_simulator.reservation.reservation import Reservation
 
+from src.asset_simulator.schedule.schedule import Schedule
 
-class Schedule(BaseModel):
-    reservations: Dict[int, Reservation] = None
+
+class AlgoSchedule(Schedule):
 
     def get_unassigned_reservations(self):
         unassigned_reservations = []

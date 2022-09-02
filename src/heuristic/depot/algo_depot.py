@@ -1,80 +1,14 @@
-from datetime import datetime
-import random
 from typing import Optional, Dict
 
-import numpy as np
-
-from src.asset_simulator.reservation.reservation import Reservation
-
-
-
-
-from pydantic import BaseModel
+from src.asset_simulator.depot.asset_depot import AssetDepot
 
 from src.asset_simulator.station.station import Station
 from src.asset_simulator.vehicle.vehicle import Vehicle
-from src.asset_simulator.schedule.schedule import Schedule
 
 
-class AlgoDepot(BaseModel):
-    stations: Optional[Dict[int, Station]] = {}
-    vehicles: Optional[Dict[int, Vehicle]] = {}
+class AlgoDepot(AssetDepot):
     walk_in_pool: Optional[Dict[int, Vehicle]] = {}
-    schedule: Schedule = {}
     minimum_ready_vehicle_pool: Dict
-    l2_charging_rate_kw: float
-    dcfc_charging_rate_kw: float
-
-    @classmethod
-    def build_depot(cls, config):
-        # the folling are attribute that live within depot
-        l2_max_power_kw = config.l2_max_power_kw
-        dcfc_max_power_kw = config.dcfc_max_power_kw
-
-        # setup stations
-        stations = {}
-        station_id = -1
-        for l2_station in range(0, config.n_l2_stations):
-            station_id += 1
-            stations[station_id] = (Station(id=station_id, type='L2', max_power_kw=l2_max_power_kw))
-
-        for dcfc_station in range(0, config.n_dcfc_stations):
-            station_id += 1
-            stations[station_id] = (Station(id=station_id, type='DCFC', max_power_kw=dcfc_max_power_kw))
-
-        # setup vehicles
-        vehicles = {}
-        vehicle_idx = -1
-        for vehicle_type, vehicle_settings in config.vehicles.items():
-            for vehicle in range(0, vehicle_settings['n']):
-                vehicle_idx += 1
-                vehicle = Vehicle(
-                    id=vehicle_idx,
-                    connected_station_id=None,
-                    type=vehicle_type,
-                    #todo: need to randomly set this
-                    state_of_charge=0.8,
-                    energy_capacity_kwh= vehicle_settings['kwh_capacity']
-                )
-                vehicles[vehicle_idx] = vehicle
-
-        # setup walk-in pool
-        walk_in_pool = {}
-
-        # schedule = Schedule(reservations=reservations)
-        schedule = {}
-
-
-
-        depot = AlgoDepot(
-            stations=stations,
-            vehicles=vehicles,
-            walk_in_pool=walk_in_pool,
-            schedule=schedule,
-            minimum_ready_vehicle_pool=config.minimum_ready_vehicle_pool
-        )
-
-        return depot
 
     def walk_in_pool_meets_minimum_critiera(self):
         walk_in_ready = [vehicle for vehicle in self.walk_in_pool if vehicle.state_of_charge >= 0.8]

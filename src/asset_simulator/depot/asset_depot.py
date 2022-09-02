@@ -20,6 +20,7 @@ class AssetDepot(BaseModel):
     queue: MockQueue
     l2_charging_rate_kw: float = 12
     dcfc_charging_rate_kw: float = 150
+    minimum_ready_vehicle_pool: Optional[Dict[str, int]]
 
     def increment_interval(self):
         interval_seconds = self.interval_seconds
@@ -175,12 +176,15 @@ class AssetDepot(BaseModel):
         # schedule = Schedule(reservations=reservations)
         schedule = {}
 
+        # if the minimum_ready_vehicle_pool is empty then default to empty dict
+
         depot = AssetDepot(
             interval_seconds=config.interval_seconds,
             queue=queue,
             stations=stations,
             vehicles=vehicles,
-            schedule=schedule
+            schedule=schedule,
+            minimum_ready_vehicle_pool=config.minimum_ready_vehicle_pool
         )
 
         return depot
