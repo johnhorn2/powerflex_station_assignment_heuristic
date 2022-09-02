@@ -26,19 +26,24 @@ class RuntimeEnvironment(BaseModel):
 
             self.demand_simulator.run_interval()
             self.asset_simulator.run_interval()
+            self.heuristic.run_interval()
 
             # increment clock
             self.demand_simulator.increment_interval()
             self.asset_simulator.increment_interval()
+            self.heuristic.increment_interval()
 
 
 # setup mock queue
 mock_queue = MockQueue(
     scan_events=[],
     reservation_events=[],
+    reservation_assignments=[],
+    move_charge=[],
+    departures=[],
     walk_in_events=[],
     vehicles=[],
-    stations=[]
+    stations=[],
 )
 
 # setup demand_simulator

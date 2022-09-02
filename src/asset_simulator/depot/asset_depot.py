@@ -22,12 +22,25 @@ class AssetDepot(BaseModel):
     dcfc_charging_rate_kw: float = 150
     minimum_ready_vehicle_pool: Optional[Dict[str, int]]
 
+    # Msg Broker Functions
+    def publish_to_vehicle_queue(self):
+        # this would be telematics data that the heuristic depends on
+        for vehicle in self.vehicles.values():
+            vehicle_json = json.dumps(vehicle.dict(), default=str)
+            self.queue.vehicles.append(vehicle_json)
+
+    def publish_to_station_queue(self):
+        # this would be station statuses that the heuristic depends on
+        for station in self.stations.values():
+            station_json = json.dumps(station.dict(), default=str)
+            self.queue.stations.append(station_json)
+
     def increment_interval(self):
         interval_seconds = self.interval_seconds
         self.current_datetime = self.current_datetime + timedelta(seconds=interval_seconds)
 
 
-    def pull_from_queue(self):
+    def poll_queues(self):
     #     # update reservations
     #     for idx, res_msg in enumerate(self.queue.reservation_events):
     #         reservation = json.loads(res_msg)
@@ -66,22 +79,10 @@ class AssetDepot(BaseModel):
         # todo based on heuristic commands
         pass
 
-    def push_vehicle_data_to_queue(self):
-        # this would be telematics data that the heuristic depends on
-        for vehicle in self.vehicles.values():
-            vehicle_json = json.dumps(vehicle.dict(), default=str)
-            self.queue.vehicles.append(vehicle_json)
-
-    def push_station_data_to_queue(self):
-        # this would be station statuses that the heuristic depends on
-        for station in self.stations.values():
-            station_json = json.dumps(station.dict(), default=str)
-            self.queue.vehicles.append(station_json)
-
     def run_interval(self):
 
         # collect any instructions from the queue
-        self.pull_from_queue()
+        self.poll_queues()
 
         # update assets based on those instructions
         # many of these actions will come from the heuristic algorithm
@@ -106,8 +107,8 @@ class AssetDepot(BaseModel):
         self.charge_vehicles()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
-        self.push_vehicle_data_to_queue()
-        self.push_station_data_to_queue()
+        self.publish_to_vehicle_queue()
+        self.publish_to_station_queue()
 
     def plugin(self, vehicle_id, station_id):
         self.vehicles[vehicle_id].plugin(station_id)

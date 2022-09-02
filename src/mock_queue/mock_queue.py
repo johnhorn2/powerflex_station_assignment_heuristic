@@ -10,6 +10,9 @@ from src.asset_simulator.station.station import Station
 class MockQueue(BaseModel):
     scan_events: List[str]
     reservation_events: List[str]
+    reservation_assignments: List[str]
+    move_charge: List[str]
+    departures: List[str]
     walk_in_events: List[str]
     vehicles: List[str]
     stations: List[str]
