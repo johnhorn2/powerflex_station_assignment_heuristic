@@ -5,15 +5,19 @@ import uuid
 
 import numpy as np
 from pydantic import BaseModel
+from typing import Dict
 
 from src.demand_simulator.demand_simulator_config.demand_simulator_config import DemandSimulatorConfig
 from src.mock_queue.mock_queue import MockQueue
+from src.mock_queue.msg_broker import MsgBroker
+from src.asset_simulator.vehicle.vehicle import Vehicle
 
 
-class DemandSimulator(BaseModel):
+class DemandSimulator(MsgBroker):
     current_datetime: datetime = datetime(year=2022, month=1, day=1, hour=0)
     config: DemandSimulatorConfig
     queue: MockQueue
+    vehicles: Dict[int, Vehicle] = {}
 
     def increment_interval(self):
         interval_seconds = self.config.interval_seconds
@@ -98,6 +102,9 @@ class DemandSimulator(BaseModel):
 
 
     def run_interval(self):
+
+        self.subscribe_to_queue('vehicles')
+
         n_res = self.get_event('reservation', self.current_datetime)
 
         n_walk_ins = self.get_event('walk_in', self.current_datetime)
@@ -107,7 +114,7 @@ class DemandSimulator(BaseModel):
             reservations = self.generate_reservations_24_hours_ahead(self.current_datetime)
             for reservation in reservations:
                 # datetime is not serializable so need default = str
-                self.queue.reservation_events.append(json.dumps(reservation, default=str))
+                self.queue.reservations.append(json.dumps(reservation, default=str))
 
         if n_walk_ins > 0:
             # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time

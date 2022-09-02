@@ -12,7 +12,6 @@ from src.demand_simulator.demand_simulator_config.demand_simulator_config import
 
 
 class RuntimeEnvironment(BaseModel):
-    mock_queue: MockQueue
     demand_simulator: DemandSimulator
     asset_simulator: AssetDepot
     heuristic: AlgoDepot
@@ -37,7 +36,7 @@ class RuntimeEnvironment(BaseModel):
 # setup mock queue
 mock_queue = MockQueue(
     scan_events=[],
-    reservation_events=[],
+    reservations=[],
     reservation_assignments=[],
     move_charge=[],
     departures=[],

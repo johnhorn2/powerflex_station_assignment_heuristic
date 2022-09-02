@@ -7,62 +7,25 @@ from pydantic import BaseModel
 from src.asset_simulator.station.station import Station
 from src.asset_simulator.vehicle.vehicle import Vehicle
 from src.asset_simulator.schedule.schedule import Schedule
+from src.mock_queue.msg_broker import MsgBroker
 from src.asset_simulator.reservation.reservation import Reservation
 from src.mock_queue.mock_queue import MockQueue
 
 
-class AssetDepot(BaseModel):
+class AssetDepot(MsgBroker):
     interval_seconds: int
     current_datetime: datetime = datetime(year=2022, month=1, day=1, hour=0)
     stations: Optional[Dict[int, Station]] = {}
     vehicles: Optional[Dict[int, Vehicle]] = {}
     schedule: Schedule
-    queue: MockQueue
     l2_charging_rate_kw: float = 12
     dcfc_charging_rate_kw: float = 150
     minimum_ready_vehicle_pool: Optional[Dict[str, int]]
-
-    # Msg Broker Functions
-    def publish_to_vehicle_queue(self):
-        # this would be telematics data that the heuristic depends on
-        for vehicle in self.vehicles.values():
-            vehicle_json = json.dumps(vehicle.dict(), default=str)
-            self.queue.vehicles.append(vehicle_json)
-
-    def publish_to_station_queue(self):
-        # this would be station statuses that the heuristic depends on
-        for station in self.stations.values():
-            station_json = json.dumps(station.dict(), default=str)
-            self.queue.stations.append(station_json)
 
     def increment_interval(self):
         interval_seconds = self.interval_seconds
         self.current_datetime = self.current_datetime + timedelta(seconds=interval_seconds)
 
-
-    def poll_queues(self):
-    #     # update reservations
-    #     for idx, res_msg in enumerate(self.queue.reservation_events):
-    #         reservation = json.loads(res_msg)
-    #         self.schedule.reservations[reservation['id']] = Reservation(
-    #             **reservation
-    #         )
-    #         # read and remove msg from queue
-    #         self.queue.reservation_events.pop(idx)
-    #
-    #
-    #     # update walk_ins
-    #     for idx, walk_in_msg in enumerate(self.queue.walk_in_events):
-    #         walk_in = json.loads(walk_in_msg)
-    #         self.schedule.reservations[walk_in['id']] = Reservation(
-    #             **walk_in
-    #         )
-    #         # read and remove msg from queue
-    #         self.queue.walk_in_events.pop(idx)
-
-        # update vehicle scans
-        # todo: make object class for this
-        pass
 
     def charge_vehicles(self):
         plugged_in_vehicle_station = [(vehicle.id, vehicle.connected_station_id) for vehicle in self.vehicles.values() if vehicle.status == 'charging']
@@ -82,7 +45,6 @@ class AssetDepot(BaseModel):
     def run_interval(self):
 
         # collect any instructions from the queue
-        self.poll_queues()
 
         # update assets based on those instructions
         # many of these actions will come from the heuristic algorithm
@@ -107,8 +69,10 @@ class AssetDepot(BaseModel):
         self.charge_vehicles()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
-        self.publish_to_vehicle_queue()
-        self.publish_to_station_queue()
+        self.publish_to_queue('vehicles')
+        self.publish_to_queue('stations')
+        # self.publish_to_vehicle_queue()
+        # self.publish_to_station_queue()
 
     def plugin(self, vehicle_id, station_id):
         self.vehicles[vehicle_id].plugin(station_id)

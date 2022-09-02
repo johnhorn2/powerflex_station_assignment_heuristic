@@ -2,26 +2,21 @@ import json
 from typing import Optional, Dict
 
 from src.asset_simulator.depot.asset_depot import AssetDepot
-
+from src.asset_simulator.reservation.reservation import Reservation
 from src.asset_simulator.station.station import Station
-from src.heuristic.vehicle.algovehicle import AlgoVehicle
+from src.asset_simulator.vehicle.vehicle import Vehicle
 
 
 class AlgoDepot(AssetDepot):
-    walk_in_pool: Optional[Dict[int, AlgoVehicle]] = {}
+    walk_in_pool: Optional[Dict[int, Vehicle]] = {}
     minimum_ready_vehicle_pool: Dict
+    reservations: Dict[str, Reservation] = {}
 
     # Msg Broker Functions
     def poll_queues(self):
-        self.subscribe_to_vehicle_queue()
-
-    def subscribe_to_vehicle_queue(self):
-        for vehicle_json in self.queue.vehicles:
-            vehicle_dict = json.loads(vehicle_json)
-            vehicle = AlgoVehicle.parse_obj(vehicle_dict)
-            # if vehicle exists overwrite else add entry
-            self.vehicles[vehicle.id] = vehicle
-
+        self.subscribe_to_queue('vehicles')
+        self.subscribe_to_queue('stations')
+        self.subscribe_to_queue('reservations')
 
     def run_interval(self):
 
