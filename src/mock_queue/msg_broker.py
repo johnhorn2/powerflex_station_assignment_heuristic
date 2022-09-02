@@ -31,3 +31,6 @@ class MsgBroker(BaseModel):
 
             # if object exists overwrite else add entry
             getattr(self, object_type)[object.id] = object
+
+    def wipe_local_objects(self, object_type):
+        setattr(self, object_type, {})

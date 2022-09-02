@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import Dict
 
 from src.demand_simulator.demand_simulator_config.demand_simulator_config import DemandSimulatorConfig
+from src.asset_simulator.reservation.reservation import Reservation
 from src.mock_queue.mock_queue import MockQueue
 from src.mock_queue.msg_broker import MsgBroker
 from src.asset_simulator.vehicle.vehicle import Vehicle
@@ -16,8 +17,9 @@ from src.asset_simulator.vehicle.vehicle import Vehicle
 class DemandSimulator(MsgBroker):
     current_datetime: datetime = datetime(year=2022, month=1, day=1, hour=0)
     config: DemandSimulatorConfig
-    queue: MockQueue
     vehicles: Dict[int, Vehicle] = {}
+    reservations: Dict[int, Reservation] = {}
+
 
     def increment_interval(self):
         interval_seconds = self.config.interval_seconds
@@ -67,39 +69,45 @@ class DemandSimulator(MsgBroker):
 
         return len(events_in_current_interval)
 
-
-
-    def get_reservations(self, n_reservations, res_datetime):
-        random_reservation_type_weights = [type_ratio for type_ratio in self.config.reservation_types.values()]
-        vehicle_types=random.choices(list(self.config.reservation_types.keys()), weights=random_reservation_type_weights, k=n_reservations)
-        reservation_list = []
-        for vehicle_type in vehicle_types:
-            reservation_list.append(
-                {
-                    "id": str(uuid.uuid4()),
-                    "departure_timestamp_utc": res_datetime,
-                    "vehicle_type": vehicle_type,
-                    "state_of_charge": 0.8
-                }
-            )
-
-        return reservation_list
+    def make_reservations(self, n_reservations, res_datetime, walk_in=False):
+        if n_reservations > 0:
+            # Currently assigning a vehicle type in the res based on the ratio in our fleet
+            # todo: Make reservations based on AVAILABLE vehicles
+            random_reservation_type_weights = [type_ratio for type_ratio in self.config.reservation_types.values()]
+            vehicle_types=random.choices(list(self.config.reservation_types.keys()), weights=random_reservation_type_weights, k=n_reservations)
+            for vehicle_type in vehicle_types:
+                id = str(uuid.uuid4())
+                res_dict = \
+                    {
+                        "id": id,
+                        "departure_timestamp_utc": res_datetime,
+                        "vehicle_type": vehicle_type,
+                        "state_of_charge": 0.8,
+                        "walk_in": walk_in
+                    }
+                self.reservations[id] = Reservation(**res_dict)
+        else:
+            pass
 
     def generate_reservations_24_hours_ahead(self, current_datetime):
         # if init the sim then generate the reservations 24 hours ahead
             # first 24 hours of reservations pre-populated
             future_datetime = current_datetime
-            reservation_list = []
             for interval in range(0, int((24*3600)/self.config.interval_seconds)):
                 # increment by timestep
                 future_datetime = future_datetime + timedelta(seconds=self.config.interval_seconds)
 
                 n_res = self.get_event('reservation', future_datetime)
-                reservations = self.get_reservations(n_res, future_datetime)
-                for res in reservations:
-                    reservation_list.append(res)
-            return reservation_list
+                self.make_reservations(n_res, future_datetime)
 
+    def generate_reservations_at_midnight(self):
+        # at midnight generate new batch of reservations
+        if self.current_datetime.hour == 0 and self.current_datetime.minute == 0 and self.current_datetime.second == 0:
+            # self.reservations = self.generate_reservations_24_hours_ahead(self.current_datetime)
+            self.generate_reservations_24_hours_ahead(self.current_datetime)
+
+            self.publish_to_queue('reservations')
+            self.wipe_local_objects('reservations')
 
     def run_interval(self):
 
@@ -109,17 +117,8 @@ class DemandSimulator(MsgBroker):
 
         n_walk_ins = self.get_event('walk_in', self.current_datetime)
 
-        # at midnight generate new batch of reservations
-        if self.current_datetime.hour == 0 and self.current_datetime.minute == 0 and self.current_datetime.second == 0:
-            reservations = self.generate_reservations_24_hours_ahead(self.current_datetime)
-            for reservation in reservations:
-                # datetime is not serializable so need default = str
-                self.queue.reservations.append(json.dumps(reservation, default=str))
+        self.generate_reservations_at_midnight()
 
         if n_walk_ins > 0:
             # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time
-            walk_ins = self.get_reservations(n_res, self.current_datetime + timedelta(minutes=15))
-            for walk_in in walk_ins:
-                walk_in['walk_in'] = True
-                # datetime is not serializable so need default = str
-                self.queue.walk_in_events.append(json.dumps(walk_in, default=str))
+            self.make_reservations(n_res, self.current_datetime + timedelta(minutes=15), walk_in=True)
