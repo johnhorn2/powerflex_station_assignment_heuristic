@@ -1,4 +1,5 @@
-import json
+from collections import namedtuple
+from operator import attrgetter
 from typing import Optional, Dict
 
 from src.asset_simulator.depot.asset_depot import AssetDepot
@@ -10,6 +11,7 @@ class AlgoDepot(AssetDepot):
     walk_in_pool: Optional[Dict[int, Vehicle]] = {}
     minimum_ready_vehicle_pool: Dict
     reservations: Dict[str, Reservation] = {}
+    reservation_assignments: Dict[str, Reservation] = {}
 
     # Msg Broker Functions
     def poll_queues(self):
@@ -34,15 +36,67 @@ class AlgoDepot(AssetDepot):
         """
 
 
-        # increment time and actions including:
-        """
-        charge any vehicles plugged in and not fully charged yet
-        decrease soc of any vehicles out on a job based on interval
-        """
+        # calculate heuristics
+        self.assign_vehicles_reservations()
 
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
+        self.publish_to_queue('reservation_assignments')
 
+
+    def sort_vehicles_highest_soc_first(self):
+        VehicleSOCSorted = namedtuple('VehicleSOCSorted', ['vehicle_id', 'state_of_charge'])
+        ReservationDepartSorted = namedtuple('ReservationDepartSorted', ['reservation_id', 'departure_timestamp_utc'])
+
+        vehicles_soc_sorted = []
+        # need sorted lists to match up later
+        for vehicle in self.vehicles.values():
+            vehicles_soc_sorted.append(
+                VehicleSOCSorted(
+                    vehicle_id=vehicle.id,
+                    state_of_charge=vehicle.state_of_charge
+                )
+            )
+        # highest SOC first, reveres = desc
+        sorted(vehicles_soc_sorted, key=attrgetter('state_of_charge'), reverse=True)
+
+        reservations_departure_sorted = []
+        for reservation in self.reservations.values():
+            reservations_departure_sorted.append(
+                ReservationDepartSorted(
+                    reservation_id=reservation.id,
+                    departure_timestamp_utc=reservation.departure_timestamp_utc
+                )
+            )
+        # earliest departure time first or asc
+        sorted(reservations_departure_sorted, key=attrgetter('departure_timestamp_utc'))
+
+        return (vehicles_soc_sorted, reservations_departure_sorted)
+
+    def assign_vehicles_reservations(self):
+
+        vehicles_soc_sorted, reservations_departure_sorted = self.sort_vehicles_highest_soc_first()
+
+        if len(vehicles_soc_sorted) >= len(reservations_departure_sorted):
+            #  vehicles >= reservations
+            for idx, reservation in enumerate(reservations_departure_sorted):
+                # move the reservation to the assigned pile
+                self.reservation_assignments[reservation.reservation_id] = self.reservations[reservation.reservation_id]
+                # fill in the assigned vehicle_id
+                self.reservation_assignments[reservation.reservation_id].assigned_vehicle_id = vehicles_soc_sorted[idx].vehicle_id
+                # remove the unassigned reservation from the reservation pile
+                del self.reservations[reservation.reservation_id]
+
+        elif len(vehicles_soc_sorted) < len(reservations_departure_sorted):
+            #  vehicles < reservations
+            for idx, vehicle in enumerate(vehicles_soc_sorted):
+                reservation = reservations_departure_sorted[idx]
+                # move the reservation to the assigned pile
+                self.reservation_assignments[reservation.reservation_id] = self.reservations[reservation.reservation_id]
+                # fill in the assigned vehicle_id
+                self.reservation_assignments[reservation.reservation_id].assigned_vehicle_id = vehicles_soc_sorted[idx].vehicle_id
+                # remove the unassigned reservation from the reservation pile
+                del self.reservations[reservation.reservation_id]
 
 
     def walk_in_pool_meets_minimum_critiera(self):

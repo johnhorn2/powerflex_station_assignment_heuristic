@@ -45,6 +45,7 @@ class AssetDepot(MsgBroker):
     def run_interval(self):
 
         # collect any instructions from the queue
+        # self.subscribe_to_queue('reservation_assignments')
 
         # update assets based on those instructions
         # many of these actions will come from the heuristic algorithm
@@ -71,8 +72,6 @@ class AssetDepot(MsgBroker):
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
         self.publish_to_queue('vehicles')
         self.publish_to_queue('stations')
-        # self.publish_to_vehicle_queue()
-        # self.publish_to_station_queue()
 
     def plugin(self, vehicle_id, station_id):
         self.vehicles[vehicle_id].plugin(station_id)
