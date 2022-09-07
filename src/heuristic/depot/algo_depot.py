@@ -19,7 +19,7 @@ class AlgoDepot(AssetDepot):
         self.subscribe_to_queue('stations','station', 'stations')
         # We need to consider all the active reservations and keep them in the queue for the algorithm
         # to re-assign assigned reservations as we get new information on vehicles and reservations
-        self.subscribe_to_queue('reservations','reservation', 'reservations', delete_on_read=False)
+        self.subscribe_to_queue('reservations','reservation', 'reservations')
 
     def run_interval(self):
 
@@ -132,30 +132,6 @@ class AlgoDepot(AssetDepot):
                     self.reservation_assignments[reservation.reservation_id].assigned_vehicle_id = vehicles_soc_sorted[idx].vehicle_id
                 else:
                     self.reservation_assignments[reservation.reservation_id].assigned_vehicle_id = None
-
-                # remove the unassigned reservation from the reservation pile
-                # del self.reservations[reservation.reservation_id]
-        #  vehicles < reservations
-        # NOTE: We still need to overwrite reservations that cannot be satisfied with a vehicle as 'NA' because
-        # we may have prior reservations assigned to vehicles that are now being used for an earlier reservation
-        # todo: under this schema last minute reservations are prioritized over folks who made reservations well in advance
-        # elif len(vehicles_soc_sorted) < len(reservations_departure_sorted):
-
-
-            # for idx, vehicle in enumerate(vehicles_soc_sorted):
-            # for idx, reservation in enumerate(reservations_departure_sorted):
-            #     if len(vehicles_soc_sorted) - 1
-            #     reservation = reservations_departure_sorted[idx]
-            #     move the reservation to the assigned pile
-                # self.reservation_assignments[reservation.reservation_id] = self.reservations[reservation.reservation_id]
-                # fill in the assigned vehicle_id
-                # self.reservation_assignments[reservation.reservation_id].assigned_vehicle_id = vehicles_soc_sorted[idx].vehicle_id
-                # remove the unassigned reservation from the reservation pile
-                # del self.reservations[reservation.reservation_id]
-
-        # dup_veh_res = self.assigned_dup_veh_ids_to_res()
-        # print('test')
-
 
     def walk_in_pool_meets_minimum_critiera(self):
         walk_in_ready = [vehicle for vehicle in self.walk_in_pool if vehicle.state_of_charge >= 0.8]
