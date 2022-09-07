@@ -10,7 +10,7 @@ class Vehicle(BaseModel):
     state_of_charge: float
     energy_capacity_kwh: int
     status: str
-    # ['parked' | 'charging' | 'finished_charging']
+    # ['parked' | 'charging' | 'finished_charging', 'driving]
 
 
     def charge(self, seconds, power_kw):

@@ -23,6 +23,9 @@ class RuntimeEnvironment(BaseModel):
         n_intervals = int((horizon_length_hours * 3600) / interval_seconds)
         for interval in range(0, n_intervals):
 
+            pct_complete = 100.0*interval/n_intervals
+            print(str(pct_complete) + ': % complete')
+
             self.demand_simulator.run_interval()
             self.asset_simulator.run_interval()
             self.heuristic.run_interval()
@@ -41,7 +44,8 @@ mock_queue = MockQueue(
     move_charge=[],
     departures=[],
     walk_in_events=[],
-    vehicles=[],
+    vehicles_demand_sim=[],
+    vehicles_heuristic=[],
     stations=[],
 )
 

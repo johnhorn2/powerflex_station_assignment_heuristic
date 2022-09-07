@@ -14,5 +14,6 @@ class MockQueue(BaseModel):
     move_charge: List[str]
     departures: List[str]
     walk_in_events: List[str]
-    vehicles: List[str]
+    vehicles_demand_sim: List[str]
+    vehicles_heuristic: List[str]
     stations: List[str]

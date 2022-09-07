@@ -17,6 +17,7 @@ class AssetDepot(MsgBroker):
     current_datetime: datetime = datetime(year=2022, month=1, day=1, hour=0)
     stations: Optional[Dict[int, Station]] = {}
     vehicles: Optional[Dict[int, Vehicle]] = {}
+    reservations: Optional[Dict[int, Reservation]] = {}
     schedule: Schedule
     l2_charging_rate_kw: float = 12
     dcfc_charging_rate_kw: float = 150
@@ -36,16 +37,40 @@ class AssetDepot(MsgBroker):
     def depart_vehicles(self):
         # if the current timestamp matches the departure AND vehicle_id matches reservation then unplug
         #todo: we don't have vehicle assignments though because the heuristic does that
-        pass
+
+        # for any assigned reservations if the departure datetime is <= current_datetime
+        # then change vehicle status to 'driving'
+        departures = [reservation for reservation in self.reservations.values() if reservation.departure_timestamp_utc <= self.current_datetime]
+        for reservation in departures:
+            # if we have as assigned vehicle id and it is time to depart then depart
+            if isinstance(reservation.assigned_vehicle_id, int):
+                # need to unplug otherwise state gets overwritten as 'finished charging' instead of 'driving'
+                self.vehicles[reservation.assigned_vehicle_id].unplug()
+                self.vehicles[reservation.assigned_vehicle_id].status = 'driving'
+            else:
+                print('missed departure')
 
     def move_vehicles(self):
         # todo based on heuristic commands
         pass
 
-    def run_interval(self):
+    def is_duplicate_vehicle_assignments(self):
+        # determine if that vehicle id is already assigned to a different reservation
+        # by creatig a dictionary of {vehicle_id: reservations) and ensuring a match on res_id
+        reserved_vehicle_ids = [res.assigned_vehicle_id for res in self.reservations.values() if res.assigned_vehicle_id != None]
+        return len(set(reserved_vehicle_ids)) != len(reserved_vehicle_ids)
 
-        # collect any instructions from the queue
-        # self.subscribe_to_queue('reservation_assignments')
+
+
+    def run_interval(self):
+        # important to depart vehicles first thing so that we don't assign the vehicles other tasks afterwards when it should be gone
+        self.depart_vehicles()
+
+
+        # the heuristic has assigned a veh id to the reservation
+        # we overwrite the current reservation with that assigned res
+        self.subscribe_to_queue('reservations', 'reservation', 'reservation_assignments')
+
 
         # update assets based on those instructions
         # many of these actions will come from the heuristic algorithm
@@ -65,13 +90,13 @@ class AssetDepot(MsgBroker):
         decrease soc of any vehicles out on a job based on interval
         """
 
-        self.depart_vehicles()
         self.move_vehicles()
         self.charge_vehicles()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
-        self.publish_to_queue('vehicles')
-        self.publish_to_queue('stations')
+        self.publish_to_queue('vehicles', 'vehicles_demand_sim')
+        self.publish_to_queue('vehicles', 'vehicles_heuristic')
+        self.publish_to_queue('stations', 'stations')
 
     def plugin(self, vehicle_id, station_id):
         self.vehicles[vehicle_id].plugin(station_id)

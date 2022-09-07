@@ -106,12 +106,12 @@ class DemandSimulator(MsgBroker):
             # self.reservations = self.generate_reservations_24_hours_ahead(self.current_datetime)
             self.generate_reservations_24_hours_ahead(self.current_datetime)
 
-            self.publish_to_queue('reservations')
-            self.wipe_local_objects('reservations')
+            self.publish_to_queue('reservations', 'reservations')
+            self.reservations = {}
 
     def run_interval(self):
 
-        self.subscribe_to_queue('vehicles')
+        self.subscribe_to_queue('vehicles', 'vehicle', 'vehicles_demand_sim')
 
         n_res = self.get_event('reservation', self.current_datetime)
 
