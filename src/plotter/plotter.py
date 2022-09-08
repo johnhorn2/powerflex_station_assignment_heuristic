@@ -12,13 +12,18 @@ class Plotter(BaseModel):
                       title='SOC at Depot',
                       width=1400, height=600)
         fig.update_xaxes(
-            dtick="M1",
-            tickformat="%b\n%Y",
+            dtick='H1',
+            tickformat='%d %H:%M'
             )
 
         fig.update_yaxes(
             tickformat= ',.0%',
             range= [0, 1]
+        )
+
+        fig.update_layout(
+            yaxis_title='(%) SOC at Depot',
+            legend_title_text='vehicle_id'
         )
 
         # fig = go.Figure(
