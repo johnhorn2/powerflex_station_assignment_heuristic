@@ -3,6 +3,18 @@
 To best serve our fleet operators or "hikers" decide where to plug in vehicles optimally
 
 
+#### Getting Started
+
+Inspiration: https://docs.streamlit.io/knowledge-base/tutorials/deploy/docker
+
+In a terminal from the parent repo folder
+```
+docker build --rm -t streamlit .
+docker run -v $(pwd):/home/code -p 8501:8501 streamlit 
+```
+click on the url in the terminal
+
+
 #### How
 
 We simulate:

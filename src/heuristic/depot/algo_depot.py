@@ -1,7 +1,7 @@
 from collections import namedtuple
 import copy
 from operator import attrgetter
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from src.asset_simulator.depot.asset_depot import AssetDepot
 from src.asset_simulator.reservation.reservation import Reservation

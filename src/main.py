@@ -1,14 +1,17 @@
 from datetime import datetime, timedelta
 import json
+import os
 
+import pandas as pd
 from pydantic import BaseModel
 
-from src.heuristic.depot.algo_depot import AlgoDepot
 from src.asset_simulator.depot_config.depot_config import AssetDepotConfig
 from src.asset_simulator.depot.asset_depot import AssetDepot
-from src.mock_queue.mock_queue import MockQueue
 from src.demand_simulator.demand_simulator.demand_simulator import DemandSimulator
 from src.demand_simulator.demand_simulator_config.demand_simulator_config import DemandSimulatorConfig
+from src.heuristic.depot.algo_depot import AlgoDepot
+from src.mock_queue.mock_queue import MockQueue
+from src.plotter.plotter import Plotter
 
 
 class RuntimeEnvironment(BaseModel):
@@ -36,6 +39,14 @@ class RuntimeEnvironment(BaseModel):
             self.heuristic.increment_interval()
 
 
+        # load meta data into dataframe for plotting
+        df = pd.DataFrame.from_dict(self.asset_simulator.vehicle_snapshot)
+
+        plot = Plotter()
+        chart = plot.get_soc_timeseries(df)
+        return (chart, df)
+
+
 # setup mock queue
 mock_queue = MockQueue(
     scan_events=[],
@@ -49,15 +60,25 @@ mock_queue = MockQueue(
     stations=[],
 )
 
+script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
+demand_sim_config = 'demand_simulator/demand_simulator_config/configs/2days_15min_40res_per_day.json'
+demand_sim_path = os.path.join(script_dir, demand_sim_config)
+
 # setup demand_simulator
-with open('demand_simulator/demand_simulator_config/configs/2days_15min_40res_per_day.json') as f:
+with open(demand_sim_path) as f:
     config = json.load(f)
 
 demand_simulator_config = DemandSimulatorConfig(**config)
 demand_simulator = DemandSimulator(config=demand_simulator_config, queue=mock_queue)
 
+
+
+
 # setup asset_simulator
-with open('asset_simulator/depot_config/configs/150_vehicles_10_L2_2_DCFC.json') as f:
+asset_sim_config = 'asset_simulator/depot_config/configs/150_vehicles_10_L2_2_DCFC.json'
+asset_sim_path = os.path.join(script_dir, asset_sim_config)
+
+with open(asset_sim_path) as f:
     config = json.load(f)
 asset_depot_config = AssetDepotConfig(**config)
 asset_depot = AssetDepot.build_depot(config=asset_depot_config, queue=mock_queue)
@@ -73,8 +94,6 @@ config['minimum_ready_vehicle_pool'] = {
 algo_depot_config = AssetDepotConfig(**config)
 
 algo_depot = AlgoDepot.build_depot(config=asset_depot_config, queue=mock_queue)
-
-
 
 
 runtime = RuntimeEnvironment(

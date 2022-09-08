@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import json
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from pydantic import BaseModel
 
@@ -17,15 +17,45 @@ class AssetDepot(MsgBroker):
     current_datetime: datetime = datetime(year=2022, month=1, day=1, hour=0)
     stations: Optional[Dict[int, Station]] = {}
     vehicles: Optional[Dict[int, Vehicle]] = {}
+    move_charge: Optional[Dict[int, Vehicle]] = {}
     reservations: Optional[Dict[int, Reservation]] = {}
     schedule: Schedule
     l2_charging_rate_kw: float = 12
     dcfc_charging_rate_kw: float = 150
     minimum_ready_vehicle_pool: Optional[Dict[str, int]]
+    vehicle_snapshot: Dict[str, List] = {}
 
     def increment_interval(self):
+        # capture the current values for plotting later
+        self.capture_vehicle_snapshot()
+
+
         interval_seconds = self.interval_seconds
         self.current_datetime = self.current_datetime + timedelta(seconds=interval_seconds)
+
+
+    def capture_vehicle_snapshot(self):
+
+        # initialize dictionary
+        if len(self.vehicle_snapshot) == 0:
+            self.vehicle_snapshot['datetime'] = []
+            for vehicle_id in self.vehicles.keys():
+                self.vehicle_snapshot[vehicle_id] = []
+
+            # init value_type column
+
+        # add vehicle soc
+        self.vehicle_snapshot['datetime'].append(self.current_datetime)
+        for vehicle in self.vehicles.values():
+            # if not driving log the SOC
+            if vehicle.status != 'driving':
+                self.vehicle_snapshot[vehicle.id].append(vehicle.state_of_charge)
+            else:
+                self.vehicle_snapshot[vehicle.id].append(None)
+
+
+
+
 
 
     def charge_vehicles(self):
@@ -48,7 +78,8 @@ class AssetDepot(MsgBroker):
                 self.vehicles[reservation.assigned_vehicle_id].unplug()
                 self.vehicles[reservation.assigned_vehicle_id].status = 'driving'
             else:
-                print('missed departure')
+                pass
+                # print('missed departure')
 
     def move_vehicles(self):
         # todo based on heuristic commands
@@ -72,7 +103,7 @@ class AssetDepot(MsgBroker):
         self.subscribe_to_queue('reservations', 'reservation', 'reservation_assignments')
 
         #todo: overwrite vehicles connected station id using the move/charge instructions in the move/charge queue
-        # self.subscribe_to_queue('vehicles', vehicle', 'move_charge')
+        self.subscribe_to_queue('move_charge', 'vehicle', 'move_charge')
 
 
         # update assets based on those instructions
@@ -101,6 +132,14 @@ class AssetDepot(MsgBroker):
         self.publish_to_queue('vehicles', 'vehicles_heuristic')
         self.publish_to_queue('stations', 'stations')
 
+
+    def execute_move_charge_instructions(self):
+        for vehicle in self.move_charge.values():
+            if vehicle.status == 'parked' and self.vehicles[vehicle.id].status != 'parked':
+                self.park(vehicle.id)
+                # todo: remove the instnace from the move_charge list
+
+
     def plugin(self, vehicle_id, station_id):
         self.vehicles[vehicle_id].plugin(station_id)
         self.stations[station_id].plugin(vehicle_id)
@@ -111,6 +150,11 @@ class AssetDepot(MsgBroker):
             if station.connected_vehicle_id == vehicle_id:
                 self.stations[station.id].unplug()
         self.vehicles[vehicle_id].unplug()
+
+    def park(self, vehicle_id):
+        if self.vehicles[vehicle_id].is_plugged_in():
+            self.unplug(self.vehicles[vehicle_id])
+        self.vehicles[vehicle_id].status = 'parked'
 
     def initialize_plugins(self):
 
@@ -176,7 +220,8 @@ class AssetDepot(MsgBroker):
             stations=stations,
             vehicles=vehicles,
             schedule=schedule,
-            minimum_ready_vehicle_pool=config.minimum_ready_vehicle_pool
+            minimum_ready_vehicle_pool=config.minimum_ready_vehicle_pool,
+            vehicle_snapshot={}
         )
 
         return depot
