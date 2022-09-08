@@ -71,6 +71,9 @@ class AssetDepot(MsgBroker):
         # we overwrite the current reservation with that assigned res
         self.subscribe_to_queue('reservations', 'reservation', 'reservation_assignments')
 
+        #todo: overwrite vehicles connected station id using the move/charge instructions in the move/charge queue
+        # self.subscribe_to_queue('vehicles', vehicle', 'move_charge')
+
 
         # update assets based on those instructions
         # many of these actions will come from the heuristic algorithm

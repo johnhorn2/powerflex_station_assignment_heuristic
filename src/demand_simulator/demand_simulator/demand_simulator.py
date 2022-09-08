@@ -1,3 +1,4 @@
+from collections import namedtuple
 from datetime import datetime, timedelta
 import json
 import random
@@ -5,7 +6,7 @@ import uuid
 
 import numpy as np
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Tuple
 
 from src.demand_simulator.demand_simulator_config.demand_simulator_config import DemandSimulatorConfig
 from src.asset_simulator.reservation.reservation import Reservation
@@ -18,6 +19,7 @@ class DemandSimulator(MsgBroker):
     current_datetime: datetime = datetime(year=2022, month=1, day=1, hour=0)
     config: DemandSimulatorConfig
     vehicles: Dict[int, Vehicle] = {}
+    vehicles_out_driving: Dict[int, Tuple] = {}
     reservations: Dict[int, Reservation] = {}
 
 
@@ -109,15 +111,69 @@ class DemandSimulator(MsgBroker):
             self.publish_to_queue('reservations', 'reservations')
             self.reservations = {}
 
+
+    def process_driving_vehicle_for_future_arrival(self):
+        # scan vehicles for driving status
+        vehicles_already_processed = [vehicle_id for vehicle_id in self.vehicles_out_driving.keys()]
+        for vehicle in self.vehicles.values():
+            if vehicle.status == 'driving' and vehicle.id not in vehicles_already_processed:
+                # assign a return datetime
+                # use normal dist parameters to assign an arrival timestamp
+                hours_out_driving = np.random.normal(
+                    loc=self.config.mean_reservation_duration_hours,
+                    scale=self.config.stdev_reservation_hours
+                )
+
+                # need to apply a floor to hours driving as normal dist will give negatives
+                hours_out_driving = max(2, hours_out_driving)
+
+                # use assumptions on miles/hour away and efficiency of vehicle to estimate soc on arrival
+                # assume 0.346 kwh / miles
+                # average 100 miles / day or 100/24 driving hrs ~ 4 miles / hr
+                miles_driven = 4 * hours_out_driving
+                kwh_consumed = miles_driven * 0.346
+                current_kwh = vehicle.energy_capacity_kwh * vehicle.state_of_charge
+
+                # can't have negative kwh for long trips
+                kwh_on_arrival = max(0, current_kwh - kwh_consumed)
+
+                # update the soc for on arrival soc
+                # assume a minimum of 5 percent soc for this simulation
+                vehicle.state_of_charge = max(0.05, round(kwh_on_arrival/vehicle.energy_capacity_kwh, 1))
+
+                arrival_datetime = self.current_datetime + timedelta(hours=hours_out_driving)
+
+                ArrivalVehicle = namedtuple('ArrivalVehicle', ['arrival_datetime', 'vehicle'])
+                self.vehicles_out_driving[vehicle.id] = ArrivalVehicle(arrival_datetime, vehicle)
+
+
+    def send_qr_scans_upon_vehicle_arrival(self):
+
+        vehicles_qr_scanned = []
+        # when current timestamp == arrival then send msg to QR queue
+        for arrival_meta in self.vehicles_out_driving.values():
+            if arrival_meta.arrival_datetime <= self.current_datetime:
+                self.publish_object_to_queue(arrival_meta.vehicle, 'scan_events')
+                vehicles_qr_scanned.append(arrival_meta.vehicle.id)
+
+        # remove vehicle from self.vehicles and self.vehicles_out_driving
+        for vehicle_id in vehicles_qr_scanned:
+            del self.vehicles[vehicle_id]
+            del self.vehicles_out_driving[vehicle_id]
+
+
     def run_interval(self):
 
         self.subscribe_to_queue('vehicles', 'vehicle', 'vehicles_demand_sim')
+
+        self.process_driving_vehicle_for_future_arrival()
 
         n_res = self.get_event('reservation', self.current_datetime)
 
         n_walk_ins = self.get_event('walk_in', self.current_datetime)
 
         self.generate_reservations_at_midnight()
+        self.send_qr_scans_upon_vehicle_arrival()
 
         if n_walk_ins > 0:
             # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time

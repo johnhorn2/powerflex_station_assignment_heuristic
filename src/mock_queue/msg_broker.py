@@ -11,6 +11,10 @@ from src.asset_simulator.vehicle.vehicle import Vehicle
 class MsgBroker(BaseModel):
     queue: MockQueue
 
+    def publish_object_to_queue(self, object, route):
+        object_json = json.dumps(object.dict(), default=str)
+        getattr(self.queue, route).append(object_json)
+
     def publish_to_queue(self, attribute_name, route):
         for object in getattr(self, attribute_name).values():
             # this would be telematics data that the heuristic depends on
