@@ -49,6 +49,9 @@ class DemandSimulator(MsgBroker):
             size=1
         ))
 
+        # can't have negative events per day
+        n_events_per_day = max(0, n_events_per_day)
+
 
         # bootstrap n times based on hour of day
         random_hour = np.random.normal(

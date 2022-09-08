@@ -18,7 +18,7 @@ class Plotter(BaseModel):
 
         fig.update_yaxes(
             tickformat= ',.0%',
-            range= [0, 1]
+            range= [0, 1.05]
         )
 
         fig.update_layout(
