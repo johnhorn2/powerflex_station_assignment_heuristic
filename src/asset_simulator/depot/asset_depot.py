@@ -1,6 +1,7 @@
+from collections import namedtuple
 from datetime import datetime, timedelta
 import json
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 
 from pydantic import BaseModel
 
@@ -24,6 +25,7 @@ class AssetDepot(MsgBroker):
     dcfc_charging_rate_kw: float = 150
     minimum_ready_vehicle_pool: Optional[Dict[str, int]]
     vehicle_snapshot: Dict[str, List] = {}
+    reservation_snapshot: Dict[str, List] = {}
 
     def increment_interval(self):
         # capture the current values for plotting later
@@ -54,9 +56,25 @@ class AssetDepot(MsgBroker):
                 self.vehicle_snapshot[vehicle.id].append(None)
 
 
+    def capture_reservation_snapshot(self, reservation_id, vehicle_id, on_time_departure, scheduled_departure_datetime, state_of_charge):
 
+        # initialize dictionary
+        if len(self.reservation_snapshot) == 0:
+            self.reservation_snapshot['scheduled_departure_datetime'] = []
+            self.reservation_snapshot['actual_departure_datetime'] = []
+            self.reservation_snapshot['reservation_id'] = []
+            self.reservation_snapshot['vehicle_id'] = []
+            self.reservation_snapshot['on_time_departure'] = []
+            self.reservation_snapshot['state_of_charge'] = []
 
-
+        # add vehicle soc
+        # self.vehicle_snapshot['datetime'].append(self.current_datetime)
+        self.reservation_snapshot['scheduled_departure_datetime'].append(scheduled_departure_datetime)
+        self.reservation_snapshot['actual_departure_datetime'].append(self.current_datetime)
+        self.reservation_snapshot['reservation_id'].append(reservation_id)
+        self.reservation_snapshot['vehicle_id'].append(vehicle_id)
+        self.reservation_snapshot['on_time_departure'].append(on_time_departure)
+        self.reservation_snapshot['state_of_charge'].append(state_of_charge)
 
     def charge_vehicles(self):
         plugged_in_vehicle_station = [(vehicle.id, vehicle.connected_station_id) for vehicle in self.vehicles.values() if vehicle.status == 'charging']
@@ -68,17 +86,60 @@ class AssetDepot(MsgBroker):
         # if the current timestamp matches the departure AND vehicle_id matches reservation then unplug
         #todo: we don't have vehicle assignments though because the heuristic does that
 
-        # for any assigned reservations if the departure datetime is <= current_datetime
+        # for any assigned reservations if:
+        # - we are on or past the departure time
+        # - the soc is >= minimum (assuming 80%)
+        # - the vehicles isn't already departed
         # then change vehicle status to 'driving'
-        departures = [reservation for reservation in self.reservations.values() if reservation.departure_timestamp_utc <= self.current_datetime]
+
+
+        """
+        departures = [reservation for reservation in self.reservations.values() \
+                      if self.current_datetime >= reservation.departure_timestamp_utc \
+                      # if no assigned vehicle then below will default to 0 >= 0.8 or false and we won't add entry to departures
+                      and getattr(self.vehicles[reservation.assigned_vehicle_id], 'state_of_charge', 0) >= 0.8 \
+                      # if no assigned vehicle then below will default to 'driving' and entry won't be added to departures
+                      and getattr(self.vehicles[reservation.assigned_vehicle_id], 'status', 'driving') != 'driving'
+                      ]
+        """
+
+        departures = []
+        for reservation in self.reservations.values():
+            if reservation.assigned_vehicle_id != None:
+                if (self.current_datetime >= reservation.departure_timestamp_utc) and \
+                (self.vehicles[reservation.assigned_vehicle_id].state_of_charge >= 0.8) and \
+                (self.vehicles[reservation.assigned_vehicle_id].status != 'driving'):
+                    departures.append(reservation)
+
+
         for reservation in departures:
             # if we have as assigned vehicle id and it is time to depart then depart
             if isinstance(reservation.assigned_vehicle_id, int):
                 # need to unplug otherwise state gets overwritten as 'finished charging' instead of 'driving'
                 self.vehicles[reservation.assigned_vehicle_id].unplug()
                 self.vehicles[reservation.assigned_vehicle_id].status = 'driving'
+                # log the succesful departure for plotting later
+                self.capture_reservation_snapshot(
+                    reservation_id=reservation.id,
+                    vehicle_id=reservation.assigned_vehicle_id,
+                    on_time_departure=True,
+                    scheduled_departure_datetime=reservation.departure_timestamp_utc,
+                    state_of_charge=self.vehicles[reservation.assigned_vehicle_id].state_of_charge
+                )
+
             else:
-                pass
+                try:
+                    soc_at_departure = self.vehicles[reservation.assigned_vehicle_id].state_of_charge
+                except KeyError:
+                    soc_at_departure = None
+                # log the unsuccesful departure for plotting later
+                self.capture_reservation_snapshot(
+                    reservation_id=reservation.id,
+                    vehicle_id=reservation.assigned_vehicle_id,
+                    on_time_departure=False,
+                    scheduled_departure_datetime=reservation.departure_timestamp_utc,
+                    state_of_charge=soc_at_departure
+                )
                 # print('missed departure')
 
     def move_vehicles(self):

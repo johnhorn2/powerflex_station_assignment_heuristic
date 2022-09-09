@@ -40,11 +40,12 @@ class RuntimeEnvironment(BaseModel):
 
 
         # load meta data into dataframe for plotting
-        df = pd.DataFrame.from_dict(self.asset_simulator.vehicle_snapshot)
+        df_soc = pd.DataFrame.from_dict(self.asset_simulator.vehicle_snapshot)
+        df_reservations = pd.DataFrame.from_dict(self.asset_simulator.reservation_snapshot)
 
         plot = Plotter()
-        chart = plot.get_soc_timeseries(df)
-        return (chart, df)
+        soc_chart = plot.get_soc_timeseries(df_soc)
+        return (soc_chart, df_reservations)
 
 
 # setup mock queue

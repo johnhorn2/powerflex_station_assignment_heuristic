@@ -31,3 +31,6 @@ class Plotter(BaseModel):
         #     layout_title_text="A Figure Displayed with fig.show()"
         # )
         return fig
+
+
+    # def get_reservation_completion(self, dataframe):
