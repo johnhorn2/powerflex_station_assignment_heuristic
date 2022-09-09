@@ -40,11 +40,12 @@ class RuntimeEnvironment(BaseModel):
 
 
         # load meta data into dataframe for plotting
-        df_soc = pd.DataFrame.from_dict(self.asset_simulator.vehicle_snapshot)
+        df_soc = pd.DataFrame.from_dict(self.asset_simulator.vehicle_soc_snapshot)
+        df_status = pd.DataFrame.from_dict(self.asset_simulator.vehicle_status_snapshot)
         df_reservations = pd.DataFrame.from_dict(self.asset_simulator.reservation_snapshot)
 
         plot = Plotter()
-        soc_chart = plot.get_soc_timeseries(df_soc)
+        soc_chart = plot.get_soc_timeseries(df_soc, df_status)
         return (soc_chart, df_reservations)
 
 

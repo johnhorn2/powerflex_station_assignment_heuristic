@@ -24,7 +24,8 @@ class AssetDepot(MsgBroker):
     l2_charging_rate_kw: float = 12
     dcfc_charging_rate_kw: float = 150
     minimum_ready_vehicle_pool: Optional[Dict[str, int]]
-    vehicle_snapshot: Dict[str, List] = {}
+    vehicle_soc_snapshot: Dict[str, List] = {}
+    vehicle_status_snapshot: Dict[str, List] = {}
     reservation_snapshot: Dict[str, List] = {}
 
     def increment_interval(self):
@@ -39,21 +40,32 @@ class AssetDepot(MsgBroker):
     def capture_vehicle_snapshot(self):
 
         # initialize dictionary
-        if len(self.vehicle_snapshot) == 0:
-            self.vehicle_snapshot['datetime'] = []
+        if len(self.vehicle_soc_snapshot) == 0:
+            self.vehicle_soc_snapshot['datetime'] = []
             for vehicle_id in self.vehicles.keys():
-                self.vehicle_snapshot[vehicle_id] = []
+                self.vehicle_soc_snapshot[vehicle_id] = []
+
+            self.vehicle_status_snapshot['datetime'] = []
+            for vehicle_id in self.vehicles.keys():
+                self.vehicle_status_snapshot[vehicle_id] = []
 
             # init value_type column
 
         # add vehicle soc
-        self.vehicle_snapshot['datetime'].append(self.current_datetime)
+        self.vehicle_soc_snapshot['datetime'].append(self.current_datetime)
         for vehicle in self.vehicles.values():
             # if not driving log the SOC
             if vehicle.status != 'driving':
-                self.vehicle_snapshot[vehicle.id].append(vehicle.state_of_charge)
+                self.vehicle_soc_snapshot[vehicle.id].append(vehicle.state_of_charge)
             else:
-                self.vehicle_snapshot[vehicle.id].append(None)
+                self.vehicle_soc_snapshot[vehicle.id].append(None)
+
+
+        # add vehicle status
+        self.vehicle_status_snapshot['datetime'].append(self.current_datetime)
+        for vehicle in self.vehicles.values():
+            # if not driving log the SOC
+            self.vehicle_status_snapshot[vehicle.id].append(vehicle.status)
 
 
     def capture_reservation_snapshot(self, reservation_id, vehicle_id, on_time_departure, scheduled_departure_datetime, state_of_charge):
