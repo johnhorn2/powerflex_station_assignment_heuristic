@@ -22,7 +22,7 @@ class Plotter(BaseModel):
         # set colors per status
         def set_color(status):
             if (status == 'driving'):
-                return "black"
+                return "blue"
             elif (status == 'charging'):
                 return "green"
             elif (status == 'parked'):
