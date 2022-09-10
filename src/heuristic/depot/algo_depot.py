@@ -56,7 +56,7 @@ class AlgoDepot(AssetDepot):
 
 
         # calculate heuristics
-        self.assign_vehicles_reservations_by_type()
+        self.assign_vehicles_reservations_by_type_and_highest_soc()
 
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
@@ -82,6 +82,7 @@ class AlgoDepot(AssetDepot):
 
 
     def sort_vehicles_highest_soc_first_by_type(self, vehicle_type):
+        #todo: This doesn't seem to be working
         VehicleSOCSorted = namedtuple('VehicleSOCSorted', ['vehicle_id', 'state_of_charge'])
 
 
@@ -127,7 +128,7 @@ class AlgoDepot(AssetDepot):
         return available_vehicles
 
 
-    def assign_vehicles_reservations_by_type(self):
+    def assign_vehicles_reservations_by_type_and_highest_soc(self):
         # todo: need to make this by vehicle class
 
         # create a list of all possible vehicle types
@@ -277,19 +278,31 @@ class AlgoDepot(AssetDepot):
                 self.move_charge[vehicle.id] = vehicle
 
 
+    # todo: need to change this code to look at assigned_reservations and assign a station because sorted soc vehicles already done and assigned
+    # todo: also need to fix the get_sorted vehicles function since it is not sorting
     def assign_charging_stations(self):
         """
         sort through the earliest departure reservations and prioritize those assigned vehicles first:
             if vehicle can meet reservation on L2 then prefer_L2 else prefer_DCFC and repeat
+
+            if we pair a vehicle with the res then pop that vehicle out of our available list
         """
         vehicles_soc_sorted = self.sort_vehicles_highest_soc_first_by_type(vehicle_type='any')
         reservations_departure_sorted = self.sort_departures_earliest_first(vehicle_type='any')
 
         # loop starting with reservation departing first and the highest SOC vehicle
-        for res_idx, reservation in enumerate(reservations_departure_sorted):
+        # make sure we have available vehicles before assignment
+        if len(vehicles_soc_sorted) > 0:
+            for res_idx, reservation in enumerate(reservations_departure_sorted):
 
-            if res_idx < len(vehicles_soc_sorted):
-                vehicle = self.vehicles[vehicles_soc_sorted[res_idx].vehicle_id]
+                # make sure we have available vehicles before assignment
+                if len(vehicles_soc_sorted) == 0:
+                    break
+
+
+                # more vehicles than reservations, lets us cycle through all the reservations
+                # the first vehicle in the sorted list will always be the highest SOC vehicle available
+                vehicle = self.vehicles[vehicles_soc_sorted[0].vehicle_id]
 
                 l2_capable = vehicle.can_meet_reservation_deadline_at_l2(
                     depature_datetime=reservation.departure_timestamp_utc,
@@ -309,6 +322,8 @@ class AlgoDepot(AssetDepot):
                             vehicle.connected_station_id = available_l2_station
                             vehicle.status = 'charging'
                             self.move_charge[vehicle.id] = vehicle
+                            # remove the first vehicle from our available list
+                            vehicles_soc_sorted.pop(0)
                     else:
                         available_dcfc_station = self.prefer_dcfc()
                         # if we could not find an L2 nor a DCFC then we can't assign a charging station
@@ -316,3 +331,5 @@ class AlgoDepot(AssetDepot):
                             vehicle.connected_station_id = available_dcfc_station
                             vehicle.status = 'charging'
                             self.move_charge[vehicle.id] = vehicle
+                            # remove the first vehicle from our available list
+                            vehicles_soc_sorted.pop(0)
