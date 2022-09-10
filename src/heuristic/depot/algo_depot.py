@@ -32,7 +32,10 @@ class AlgoDepot(AssetDepot):
         self.reservations = self.filter_out_expired_reservations(self.reservations)
 
         # we need to estimate if the vehicle is departed internally so as not to assign it
-        self.depart_vehicles()
+        # self.depart_vehicles()
+
+        # if vehicles are 80% or more filled up then move to parking lot
+        self.free_up_ready_vehicles()
 
         # scan QR events
         self.get_qr_scan_events()
@@ -65,7 +68,7 @@ class AlgoDepot(AssetDepot):
         self.reservation_assignments = {}
 
         # assign charging station/vehicle pairs
-        self.assign_earliest_reservations_charging_stations()
+        self.assign_charging_stations()
 
         # send the move/charge instructions to the asset depot simulator
         self.publish_to_queue('move_charge', 'move_charge')
@@ -265,7 +268,16 @@ class AlgoDepot(AssetDepot):
             return None
 
 
-    def assign_earliest_reservations_charging_stations(self):
+    def free_up_ready_vehicles(self):
+        # if a vehicle is finished charging or 80% done then park it instead of charge it
+        for vehicle in self.vehicles.values():
+            if vehicle.state_of_charge >= 0.8 and vehicle.status in ('charging', 'finished_charging'):
+                vehicle.connected_station_id = None
+                vehicle.status = 'parked'
+                self.move_charge[vehicle.id] = vehicle
+
+
+    def assign_charging_stations(self):
         """
         sort through the earliest departure reservations and prioritize those assigned vehicles first:
             if vehicle can meet reservation on L2 then prefer_L2 else prefer_DCFC and repeat
@@ -274,11 +286,10 @@ class AlgoDepot(AssetDepot):
         reservations_departure_sorted = self.sort_departures_earliest_first(vehicle_type='any')
 
         # loop starting with reservation departing first and the highest SOC vehicle
-        for idx, reservation in enumerate(reservations_departure_sorted):
+        for res_idx, reservation in enumerate(reservations_departure_sorted):
 
-            # if we have more reservations than vehicles then skip assigning a charging station once res # > veh #
-            if idx < len(vehicles_soc_sorted):
-                vehicle = self.vehicles[vehicles_soc_sorted[idx].vehicle_id]
+            if res_idx < len(vehicles_soc_sorted):
+                vehicle = self.vehicles[vehicles_soc_sorted[res_idx].vehicle_id]
 
                 l2_capable = vehicle.can_meet_reservation_deadline_at_l2(
                     depature_datetime=reservation.departure_timestamp_utc,
@@ -287,10 +298,21 @@ class AlgoDepot(AssetDepot):
                     padding_seconds=60*15
                 )
 
-                # append station assigned vehicles to our move_charge list which we be published to a queue
-                if l2_capable:
-                    vehicle.connected_station_id = self.prefer_l2()
-                    self.move_charge[vehicle.id] = vehicle
-                else:
-                    vehicle.connected_station_id = self.prefer_dcfc()
-                    self.move_charge[vehicle.id] = vehicle
+                # we don't need to optimized charging stations if the vehicle already has > 80% soc,
+                # 0.79 in case of rounding error on charging time cycle
+                if vehicle.state_of_charge < 0.79:
+                    # if the vehicle can charge up in time with L2
+                    if l2_capable:
+                        available_l2_station = self.prefer_l2()
+                        # if we could not find an L2 nor a DCFC then we can't assign a charging station
+                        if isinstance(available_l2_station, int):
+                            vehicle.connected_station_id = available_l2_station
+                            vehicle.status = 'charging'
+                            self.move_charge[vehicle.id] = vehicle
+                    else:
+                        available_dcfc_station = self.prefer_dcfc()
+                        # if we could not find an L2 nor a DCFC then we can't assign a charging station
+                        if isinstance(available_dcfc_station, int):
+                            vehicle.connected_station_id = available_dcfc_station
+                            vehicle.status = 'charging'
+                            self.move_charge[vehicle.id] = vehicle

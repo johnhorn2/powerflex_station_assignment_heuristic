@@ -12,8 +12,6 @@
   "mean_reservations_per_day": 40,
   "stdev_reservations_per_day": 5,
 
-  "mean_reservation_duration_hours": 48,
-  "stdev_reservation_hours": 24,
   "reservation_types": {
        "suv": 0.3,
        "sedan": 0.5,

@@ -11,3 +11,5 @@ class AssetDepotConfig(BaseModel):
     l2_max_power_kw: float
     dcfc_max_power_kw: float
     minimum_ready_vehicle_pool: Optional[Dict[str, int]] = {}
+    mean_reservation_duration_hours: int
+    stdev_reservation_hours: int

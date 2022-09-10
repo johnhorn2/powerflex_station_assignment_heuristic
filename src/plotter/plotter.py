@@ -26,7 +26,7 @@ class Plotter(BaseModel):
             elif (status == 'charging'):
                 return "green"
             elif (status == 'parked'):
-                return "brown"
+                return "grey"
             elif (status == 'finished_charging'):
                 return "yellow"
             elif (status == 'NA'):
@@ -83,7 +83,6 @@ class Plotter(BaseModel):
 
         fig.update_layout(height=n_plots*200, title_text="Vehicle (%) SOC Over Time")
 
-        print('test')
 
 
 
