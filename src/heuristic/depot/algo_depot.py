@@ -82,7 +82,6 @@ class AlgoDepot(AssetDepot):
 
 
     def sort_vehicles_highest_soc_first_by_type(self, vehicle_type):
-        #todo: This doesn't seem to be working
         VehicleSOCSorted = namedtuple('VehicleSOCSorted', ['vehicle_id', 'state_of_charge'])
 
 
@@ -97,8 +96,7 @@ class AlgoDepot(AssetDepot):
                     )
                 )
         # highest SOC first, reveres = desc
-        sorted(vehicles_soc_sorted, key=attrgetter('state_of_charge'), reverse=True)
-        return vehicles_soc_sorted
+        return sorted(vehicles_soc_sorted, key=attrgetter('state_of_charge'), reverse=True)
 
     def sort_departures_earliest_first(self, vehicle_type):
         ReservationDepartSorted = namedtuple('ReservationDepartSorted', ['reservation_id', 'departure_timestamp_utc'])
@@ -113,9 +111,7 @@ class AlgoDepot(AssetDepot):
                     )
                 )
         # earliest departure time first or asc
-        sorted(reservations_departure_sorted, key=attrgetter('departure_timestamp_utc'))
-
-        return reservations_departure_sorted
+        return sorted(reservations_departure_sorted, key=attrgetter('departure_timestamp_utc'))
 
     def filter_out_expired_reservations(self, reservations):
         current_reservations = {reservation.id: reservation for reservation in reservations.values() \
@@ -279,7 +275,6 @@ class AlgoDepot(AssetDepot):
 
 
     # todo: need to change this code to look at assigned_reservations and assign a station because sorted soc vehicles already done and assigned
-    # todo: also need to fix the get_sorted vehicles function since it is not sorting
     def assign_charging_stations(self):
         """
         sort through the earliest departure reservations and prioritize those assigned vehicles first:
