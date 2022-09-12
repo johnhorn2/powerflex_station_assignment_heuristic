@@ -12,6 +12,7 @@ class AlgoDepot(AssetDepot):
     walk_in_pool: Optional[Dict[int, Vehicle]] = {}
     minimum_ready_vehicle_pool: Dict
     reservation_assignments: Dict[str, Reservation] = {}
+    past_reservation_assignments: Dict[str, Reservation] = {}
     qr_scans: Optional[Dict[int, Vehicle]] = {}
     move_charge: Optional[Dict[int, Vehicle]] = {}
 
@@ -67,7 +68,7 @@ class AlgoDepot(AssetDepot):
         self.publish_to_queue('reservation_assignments', 'reservation_assignments')
 
         # after each submission of reservation assignments we wipe the local memory of reservation assignments
-        # self.reservation_assignments = {}
+        self.reservation_assignments = {}
 
 
         # send the move/charge instructions to the asset depot simulator
@@ -136,22 +137,33 @@ class AlgoDepot(AssetDepot):
 
                         # move the reservation to the assigned pile
                         self.reservation_assignments[reservation.id] = self.reservations[reservation.id]
+
+                        # need to keep a record of past reservation assignments so we don't send redundant requests
+                        self.past_reservation_assignments[reservation.id] = self.reservations[reservation.id]
+
+
                         # fill in the assigned vehicle_id
                         if vehicles_soc_sorted[idx]:
                             # add the assignment timestamp
                             self.reservation_assignments[reservation.id].assigned_at_timestamp_utc = self.current_datetime
                             # add the vehicle id to be assigned
                             self.reservation_assignments[reservation.id].assigned_vehicle_id = vehicles_soc_sorted[idx].id
+
+                            # need to keep a record of past reservation assignments so we don't send redundant requests
+                            self.past_reservation_assignments[reservation.id] = self.reservation_assignments[reservation.id]
                         else:
                             # We have to assign reservations None Vehicle ID because if we previously assigned a reservation a vehicle id we need to overwrite that in some cases
                             self.reservation_assignments[reservation.id].assigned_vehicle_id = None
+
+                            # need to keep a record of past reservation assignments so we don't send redundant requests
+                            self.past_reservation_assignments[reservation.id].assigned_vehicle_id = None
 
     def new_unique_reservation(self, reservation):
         # if the reservation has already been assigned to this vehicle and the departure date is the same then no need to update it
         # make the API calls less chatty
         try:
-            if (self.reservation_assignments[reservation.id].assigned_vehicle_id == reservation.assigned_vehicle_id) \
-                and (self.reservation_assignments[reservation.id].departure_timestamp_utc == reservation.departure_timestamp_utc):
+            if (self.past_reservation_assignments[reservation.id].assigned_vehicle_id == reservation.assigned_vehicle_id) \
+                and (self.past_reservation_assignments[reservation.id].departure_timestamp_utc == reservation.departure_timestamp_utc):
                 return False
             else:
                 # either the departure date and/or the vehicle has changed for this departure so send an update

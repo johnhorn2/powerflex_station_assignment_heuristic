@@ -17,7 +17,10 @@ class Plotter(BaseModel):
         n_vehicles = len(vehicle_ids)
 
         n_plots = len(vehicle_ids)
-        subplot_titles = ['vehicle: ' + str(id) for id in vehicle_ids]
+        subplot_titles = []
+        for id in vehicle_ids:
+            subplot_titles.append('vehicle: ' + str(id) + '<br> (%) SOC')
+            subplot_titles.append('reservations')
 
         # set colors per status
         def set_color(status):
@@ -38,7 +41,8 @@ class Plotter(BaseModel):
             rows= 2*(n_vehicles), # (overlayed) 1 for soc, 1 for status, (new row) 1 for assigned reservations
             # rows=n_vehicles,
             cols=1,
-            subplot_titles=subplot_titles
+            subplot_titles=subplot_titles,
+            shared_xaxes=True
         )
 
         # fig.add_trace(go.Scatter(
@@ -50,7 +54,9 @@ class Plotter(BaseModel):
         #     textposition="bottom center"
         # ))
 
-        for idx, vehicle_id in enumerate(vehicle_ids, start=0):
+        row_placement = -1
+        for plot_num, vehicle_id in enumerate(vehicle_ids, start=0):
+            row_placement += 2
 
             fig.add_trace(
                 go.Scatter(
@@ -58,32 +64,67 @@ class Plotter(BaseModel):
                     y=df_soc[vehicle_id],
                     hovertemplate= '%{x}</i>: SOC:%{y:.2f}'
                 ),
-                    row=idx+1,
+                    row=row_placement,
                     col=1
             )
+
+            # if plot_num == 0:
+            #     axis_num = ''
+            # else:
+            #     axis_num = str(plot_num)
+            #
+            # second_axis_num = str(plot_num + 1)
+
+            # fig['layout']['xaxis' + axis_num]['title'] = 'Label x-axis 1'
+            # fig['layout']['yaxis' + axis_num]['title'] = '(%) SOC'
 
 
             fig.add_trace(
                go.Bar(
                    x=df_status['datetime'],
                    y=np.ones(shape=len(df_status['datetime'])),
-                   marker={'color':  df_status[idx].map(lambda x: set_color(x))},
-                   hovertemplate=df_status[idx],
+                   marker={'color':  df_status[plot_num].map(lambda x: set_color(x))},
+                   hovertemplate=df_status[plot_num],
                    opacity=0.2
                ),
-                row= idx + 1,
+                row=row_placement,
                 col=1
             )
 
-            # fig.add_trace(
-            #     go.Scatter(
-            #         x=df_soc['datetime'],
-            #         y=df_soc[vehicle_id],
-            #         hovertemplate= '%{x}</i>: SOC:%{y:.2f}'
-            #     ),
-            #         row=idx+2,
-            #         col=1
-            # )
+            # plot timeline of every reservation per vehicle
+            # todo: mark cancelled reservations by modifying res object to have a status: 'created' | 'cancelled'
+
+            # assumes the vehicle had a reservation assigned to it
+            try:
+                for res in dictionary_of_assigned_reservations[vehicle_id]:
+                    hover_values = [
+                                'created <br>' + str(res.created_at_timestamp_utc),
+                                'assigned <br>' + str(res.assigned_at_timestamp_utc),
+                                'requested_departure <br>' + str(res.departure_timestamp_utc)
+                                ]
+                    text_values = ['created', 'assigned', 'departure']
+                    fig.add_trace(
+                        go.Scatter(
+                            mode='markers+text',
+                            x=[
+                                res.created_at_timestamp_utc,
+                                res.assigned_at_timestamp_utc,
+                                res.departure_timestamp_utc
+                               ],
+                            y=np.ones(shape=3),
+                            hovertemplate=hover_values,
+                            text=text_values,
+                            textposition=['top left', 'middle center', 'bottom right'],
+                            # hovertemplate= '%{x}</i>: :%{y:.2f}'
+                        ),
+                            row=row_placement+1,
+                            col=1
+                    )
+
+                    # fig['layout']['yaxis' + second_axis_num]['title'] = 'reservation'
+            # vehicle never had a reservation assigned to it
+            except KeyError:
+                pass
 
 
         fig.update_xaxes(
@@ -93,13 +134,13 @@ class Plotter(BaseModel):
 
         fig.update_yaxes(
             tickformat=',.0%',
-            range= [0, 1.05]
+            range= [0, 1.4]
         )
 
-        fig.update_layout(
-            yaxis_title='(%) SOC at Depot',
-            legend_title_text='vehicle_id'
-        )
+        # fig.update_layout(
+        #     yaxis_title='(%) SOC at Depot',
+        #     legend_title_text='vehicle_id'
+        # )
 
         fig.update_layout(height=n_plots*200, title_text="Vehicle (%) SOC Over Time")
 
