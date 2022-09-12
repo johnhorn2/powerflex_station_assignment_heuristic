@@ -1,6 +1,7 @@
 import json
 
 from pydantic import BaseModel
+from typing import Dict, List
 
 from src.mock_queue.mock_queue import MockQueue
 from src.asset_simulator.reservation.reservation import Reservation
@@ -10,6 +11,7 @@ from src.asset_simulator.vehicle.vehicle import Vehicle
 
 class MsgBroker(BaseModel):
     queue: MockQueue
+    reservation_assignment_snapshot: Dict[str, List] = {}
 
     def publish_object_to_queue(self, object, route):
         object_json = json.dumps(object.dict(), default=str)
@@ -26,8 +28,23 @@ class MsgBroker(BaseModel):
         for object_json in getattr(self.queue, route):
             object_dict = json.loads(object_json)
 
+            # We need to capture the stream of reservation assignments to evaluate how verbose and accurate they are
             if object_type == 'reservation':
-                object = Reservation.parse_obj(object_dict)
+                try:
+                    object = Reservation.parse_obj(object_dict)
+                except:
+                    print('poo')
+
+                if route == 'reservation_assignments':
+                    # assumes we sent an assignment for this vehicle before
+                    try:
+                        self.reservation_assignment_snapshot[object.assigned_vehicle_id].append(object)
+                    except KeyError:
+                        # first time sending vehicle reservation assignment
+                        self.reservation_assignment_snapshot[object.assigned_vehicle_id] = [object]
+
+
+
             elif object_type == 'station':
                 object = Station.parse_obj(object_dict)
             elif object_type == 'vehicle':

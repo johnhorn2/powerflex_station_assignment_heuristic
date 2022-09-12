@@ -10,9 +10,9 @@ import numpy as np
 class Plotter(BaseModel):
 
 
-    def get_soc_timeseries(self, df_soc, df_status):
+    def get_soc_timeseries(self, df_soc, df_status, dictionary_of_assigned_reservations):
 
-
+        res_assignments = dictionary_of_assigned_reservations
         vehicle_ids = list(df_soc.columns)[1:]
         n_vehicles = len(vehicle_ids)
 
@@ -35,11 +35,20 @@ class Plotter(BaseModel):
         # we have n_vehicles SOC time series
         # as well as n_vehicles status bars below each timeseries
         fig = make_subplots(
-            rows= 2*(n_vehicles),
+            rows= 2*(n_vehicles), # (overlayed) 1 for soc, 1 for status, (new row) 1 for assigned reservations
             # rows=n_vehicles,
             cols=1,
             subplot_titles=subplot_titles
         )
+
+        # fig.add_trace(go.Scatter(
+        #     x=[0, 1, 2],
+        #     y=[2, 2, 2],
+        #     mode="markers+text",
+        #     name="Markers and Text",
+        #     text=["Text D", "Text E", "Text F"],
+        #     textposition="bottom center"
+        # ))
 
         for idx, vehicle_id in enumerate(vehicle_ids, start=0):
 
@@ -65,6 +74,17 @@ class Plotter(BaseModel):
                 row= idx + 1,
                 col=1
             )
+
+            # fig.add_trace(
+            #     go.Scatter(
+            #         x=df_soc['datetime'],
+            #         y=df_soc[vehicle_id],
+            #         hovertemplate= '%{x}</i>: SOC:%{y:.2f}'
+            #     ),
+            #         row=idx+2,
+            #         col=1
+            # )
+
 
         fig.update_xaxes(
             dtick='H1',

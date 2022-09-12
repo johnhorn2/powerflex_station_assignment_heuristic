@@ -18,6 +18,7 @@ class RuntimeEnvironment(BaseModel):
     demand_simulator: DemandSimulator
     asset_simulator: AssetDepot
     heuristic: AlgoDepot
+    queue: MockQueue
 
     def run(self):
         interval_seconds = self.demand_simulator.config.interval_seconds
@@ -42,11 +43,10 @@ class RuntimeEnvironment(BaseModel):
         # load meta data into dataframe for plotting
         df_soc = pd.DataFrame.from_dict(self.asset_simulator.vehicle_soc_snapshot)
         df_status = pd.DataFrame.from_dict(self.asset_simulator.vehicle_status_snapshot)
-        df_reservations = pd.DataFrame.from_dict(self.asset_simulator.reservation_snapshot)
 
         plot = Plotter()
-        soc_chart = plot.get_soc_timeseries(df_soc, df_status)
-        return (soc_chart, df_reservations)
+        soc_chart = plot.get_soc_timeseries(df_soc, df_status, self.asset_simulator.reservation_assignment_snapshot)
+        return (soc_chart, None)
 
 
 # setup mock queue
@@ -102,7 +102,8 @@ runtime = RuntimeEnvironment(
     mock_queue=mock_queue,
     demand_simulator=demand_simulator,
     asset_simulator=asset_depot,
-    heuristic=algo_depot
+    heuristic=algo_depot,
+    queue=mock_queue
 )
 
 runtime.run()

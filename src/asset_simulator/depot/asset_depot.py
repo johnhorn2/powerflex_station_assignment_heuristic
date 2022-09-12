@@ -27,7 +27,7 @@ class AssetDepot(MsgBroker):
     minimum_ready_vehicle_pool: Optional[Dict[str, int]]
     vehicle_soc_snapshot: Dict[str, List] = {}
     vehicle_status_snapshot: Dict[str, List] = {}
-    reservation_snapshot: Dict[str, List] = {}
+    departure_snapshot: Dict[str, List] = {}
     vehicles_out_driving: Dict[int, Tuple] = {}
     trip_config: Dict
 
@@ -67,25 +67,25 @@ class AssetDepot(MsgBroker):
             self.vehicle_status_snapshot[vehicle.id].append(vehicle.status)
 
 
-    def capture_reservation_snapshot(self, reservation_id, vehicle_id, on_time_departure, scheduled_departure_datetime, state_of_charge):
+    def capture_departure_snapshot(self, reservation_id, vehicle_id, on_time_departure, scheduled_departure_datetime, state_of_charge):
 
         # initialize dictionary
-        if len(self.reservation_snapshot) == 0:
-            self.reservation_snapshot['scheduled_departure_datetime'] = []
-            self.reservation_snapshot['actual_departure_datetime'] = []
-            self.reservation_snapshot['reservation_id'] = []
-            self.reservation_snapshot['vehicle_id'] = []
-            self.reservation_snapshot['on_time_departure'] = []
-            self.reservation_snapshot['state_of_charge'] = []
+        if len(self.departure_snapshot) == 0:
+            self.departure_snapshot['scheduled_departure_datetime'] = []
+            self.departure_snapshot['actual_departure_datetime'] = []
+            self.departure_snapshot['reservation_id'] = []
+            self.departure_snapshot['vehicle_id'] = []
+            self.departure_snapshot['on_time_departure'] = []
+            self.departure_snapshot['state_of_charge'] = []
 
         # add vehicle soc
         # self.vehicle_snapshot['datetime'].append(self.current_datetime)
-        self.reservation_snapshot['scheduled_departure_datetime'].append(scheduled_departure_datetime)
-        self.reservation_snapshot['actual_departure_datetime'].append(self.current_datetime)
-        self.reservation_snapshot['reservation_id'].append(reservation_id)
-        self.reservation_snapshot['vehicle_id'].append(vehicle_id)
-        self.reservation_snapshot['on_time_departure'].append(on_time_departure)
-        self.reservation_snapshot['state_of_charge'].append(state_of_charge)
+        self.departure_snapshot['scheduled_departure_datetime'].append(scheduled_departure_datetime)
+        self.departure_snapshot['actual_departure_datetime'].append(self.current_datetime)
+        self.departure_snapshot['reservation_id'].append(reservation_id)
+        self.departure_snapshot['vehicle_id'].append(vehicle_id)
+        self.departure_snapshot['on_time_departure'].append(on_time_departure)
+        self.departure_snapshot['state_of_charge'].append(state_of_charge)
 
     def charge_vehicles(self):
         plugged_in_vehicle_station = [(vehicle.id, vehicle.connected_station_id) for vehicle in self.vehicles.values() if vehicle.status == 'charging']
@@ -130,7 +130,7 @@ class AssetDepot(MsgBroker):
                 self.vehicles[reservation.assigned_vehicle_id].unplug()
                 self.vehicles[reservation.assigned_vehicle_id].status = 'driving'
                 # log the succesful departure for plotting later
-                self.capture_reservation_snapshot(
+                self.capture_departure_snapshot(
                     reservation_id=reservation.id,
                     vehicle_id=reservation.assigned_vehicle_id,
                     on_time_departure=True,
@@ -144,7 +144,7 @@ class AssetDepot(MsgBroker):
                 except KeyError:
                     soc_at_departure = None
                 # log the unsuccesful departure for plotting later
-                self.capture_reservation_snapshot(
+                self.capture_departure_snapshot(
                     reservation_id=reservation.id,
                     vehicle_id=reservation.assigned_vehicle_id,
                     on_time_departure=False,

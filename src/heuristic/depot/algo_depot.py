@@ -58,6 +58,8 @@ class AlgoDepot(AssetDepot):
         # calculate heuristics
         self.assign_vehicles_reservations_by_type_and_highest_soc()
 
+        # assign charging station/vehicle pairs
+        self.assign_charging_stations()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
 
@@ -65,10 +67,8 @@ class AlgoDepot(AssetDepot):
         self.publish_to_queue('reservation_assignments', 'reservation_assignments')
 
         # after each submission of reservation assignments we wipe the local memory of reservation assignments
-        self.reservation_assignments = {}
+        # self.reservation_assignments = {}
 
-        # assign charging station/vehicle pairs
-        self.assign_charging_stations()
 
         # send the move/charge instructions to the asset depot simulator
         self.publish_to_queue('move_charge', 'move_charge')
@@ -82,36 +82,22 @@ class AlgoDepot(AssetDepot):
 
 
     def sort_vehicles_highest_soc_first_by_type(self, vehicle_type):
-        VehicleSOCSorted = namedtuple('VehicleSOCSorted', ['vehicle_id', 'state_of_charge'])
-
-
-        vehicles_soc_sorted = []
-        # need sorted lists to match up later
-        for vehicle in self.vehicles.values():
-            if vehicle.type == vehicle_type or vehicle_type == 'any':
-                vehicles_soc_sorted.append(
-                    VehicleSOCSorted(
-                        vehicle_id=vehicle.id,
-                        state_of_charge=vehicle.state_of_charge
-                    )
-                )
-        # highest SOC first, reveres = desc
-        return sorted(vehicles_soc_sorted, key=attrgetter('state_of_charge'), reverse=True)
+        # we need all vehicles sorted by SOC Descending
+        if vehicle_type == 'any':
+            return sorted(self.vehicles.values(), key=lambda x: x.state_of_charge, reverse=True)
+        else:
+            # we need a subset of vehicles sorted by departure ascending
+            subset_by_vehicle_type = [vehicle for vehicle in self.vehicles.values() if vehicle.type == vehicle_type]
+            return sorted(subset_by_vehicle_type, key=lambda x: x.state_of_charge, reverse=True)
 
     def sort_departures_earliest_first(self, vehicle_type):
-        ReservationDepartSorted = namedtuple('ReservationDepartSorted', ['reservation_id', 'departure_timestamp_utc'])
-
-        reservations_departure_sorted = []
-        for reservation in self.reservations.values():
-            if reservation.vehicle_type == vehicle_type or vehicle_type == 'any':
-                reservations_departure_sorted.append(
-                    ReservationDepartSorted(
-                        reservation_id=reservation.id,
-                        departure_timestamp_utc=reservation.departure_timestamp_utc
-                    )
-                )
-        # earliest departure time first or asc
-        return sorted(reservations_departure_sorted, key=attrgetter('departure_timestamp_utc'))
+        # we need all vehicles sorted by departure ascending
+        if vehicle_type == 'any':
+            return sorted(self.reservations.values(), key=lambda x: x.departure_timestamp_utc)
+        else:
+            # we need a subset of vehicles sorted by departure ascending
+            subset_by_vehicle_type = [res for res in self.reservations.values() if res.vehicle_type == vehicle_type]
+            return sorted(subset_by_vehicle_type, key=lambda x: x.departure_timestamp_utc)
 
     def filter_out_expired_reservations(self, reservations):
         current_reservations = {reservation.id: reservation for reservation in reservations.values() \
@@ -125,8 +111,6 @@ class AlgoDepot(AssetDepot):
 
 
     def assign_vehicles_reservations_by_type_and_highest_soc(self):
-        # todo: need to make this by vehicle class
-
         # create a list of all possible vehicle types
         vehicle_types = list(set([vehicle.type for vehicle in self.vehicles.values()]))
 
@@ -147,14 +131,34 @@ class AlgoDepot(AssetDepot):
                 pass
             else:
                 for idx, reservation in enumerate(reservations_departure_sorted):
-                    # move the reservation to the assigned pile
-                    self.reservation_assignments[reservation.reservation_id] = self.reservations[reservation.reservation_id]
-                    # fill in the assigned vehicle_id
-                    if vehicles_soc_sorted[idx]:
-                        self.reservation_assignments[reservation.reservation_id].assigned_vehicle_id = vehicles_soc_sorted[idx].vehicle_id
-                    else:
-                        # We have to assign reservations None Vehicle ID because if we previously assigned a reservation a vehicle id we need to overwrite that in some cases
-                        self.reservation_assignments[reservation.reservation_id].assigned_vehicle_id = None
+
+                    if self.new_unique_reservation(reservation):
+
+                        # move the reservation to the assigned pile
+                        self.reservation_assignments[reservation.id] = self.reservations[reservation.id]
+                        # fill in the assigned vehicle_id
+                        if vehicles_soc_sorted[idx]:
+                            # add the assignment timestamp
+                            self.reservation_assignments[reservation.id].assigned_at_timestamp_utc = self.current_datetime
+                            # add the vehicle id to be assigned
+                            self.reservation_assignments[reservation.id].assigned_vehicle_id = vehicles_soc_sorted[idx].id
+                        else:
+                            # We have to assign reservations None Vehicle ID because if we previously assigned a reservation a vehicle id we need to overwrite that in some cases
+                            self.reservation_assignments[reservation.id].assigned_vehicle_id = None
+
+    def new_unique_reservation(self, reservation):
+        # if the reservation has already been assigned to this vehicle and the departure date is the same then no need to update it
+        # make the API calls less chatty
+        try:
+            if (self.reservation_assignments[reservation.id].assigned_vehicle_id == reservation.assigned_vehicle_id) \
+                and (self.reservation_assignments[reservation.id].departure_timestamp_utc == reservation.departure_timestamp_utc):
+                return False
+            else:
+                # either the departure date and/or the vehicle has changed for this departure so send an update
+                return True
+        except KeyError:
+            # this reservation has not been assigned before
+            return True
 
     def walk_in_pool_meets_minimum_critiera(self):
         walk_in_ready = [vehicle for vehicle in self.walk_in_pool if vehicle.state_of_charge >= 0.8]
@@ -297,7 +301,7 @@ class AlgoDepot(AssetDepot):
 
                 # more vehicles than reservations, lets us cycle through all the reservations
                 # the first vehicle in the sorted list will always be the highest SOC vehicle available
-                vehicle = self.vehicles[vehicles_soc_sorted[0].vehicle_id]
+                vehicle = self.vehicles[vehicles_soc_sorted[0].id]
 
                 l2_capable = vehicle.can_meet_reservation_deadline_at_l2(
                     depature_datetime=reservation.departure_timestamp_utc,

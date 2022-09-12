@@ -86,6 +86,7 @@ class DemandSimulator(MsgBroker):
                     {
                         "id": id,
                         "departure_timestamp_utc": res_datetime,
+                        "created_at_timestamp_utc": self.current_datetime,
                         "vehicle_type": vehicle_type,
                         "state_of_charge": 0.8,
                         "walk_in": walk_in
