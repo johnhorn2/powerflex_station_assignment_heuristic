@@ -133,7 +133,8 @@ class AlgoDepot(AssetDepot):
             else:
                 for idx, reservation in enumerate(reservations_departure_sorted):
 
-                    if self.new_unique_reservation(reservation):
+                    if self.reservation_is_new(reservation) or self.reservation_is_unique(reservation):
+                    # if self.new_unique_reservation(reservation):
 
                         # move the reservation to the assigned pile
                         self.reservation_assignments[reservation.id] = self.reservations[reservation.id]
@@ -153,10 +154,34 @@ class AlgoDepot(AssetDepot):
                             self.past_reservation_assignments[reservation.id] = self.reservation_assignments[reservation.id]
                         else:
                             # We have to assign reservations None Vehicle ID because if we previously assigned a reservation a vehicle id we need to overwrite that in some cases
-                            self.reservation_assignments[reservation.id].assigned_vehicle_id = None
+                            if self.reservation_is_new(reservation) == False and self.reservation_is_unique(reservation) == True:
+                                self.reservation_assignments[reservation.id].assigned_vehicle_id = None
+                                self.reservation_assignments[reservation.id].status = 'vehicle_reassignment'
 
-                            # need to keep a record of past reservation assignments so we don't send redundant requests
-                            self.past_reservation_assignments[reservation.id].assigned_vehicle_id = None
+                                # need to keep a record of past reservation assignments so we don't send redundant requests
+                                self.past_reservation_assignments[reservation.id] = self.reservation_assignments[reservation.id]
+                            else:
+                                # only send reervations with no vehicles if there was an update made
+                                pass
+
+
+
+    def reservation_is_new(self, reservation):
+        try:
+           self.past_reservation_assignments[reservation.id]
+           return False
+        except KeyError:
+            return True
+
+
+    def reservation_is_unique(self, reservation):
+        if (self.past_reservation_assignments[reservation.id].assigned_vehicle_id == reservation.assigned_vehicle_id) \
+                and (self.past_reservation_assignments[reservation.id].departure_timestamp_utc == reservation.departure_timestamp_utc):
+            return False
+        else:
+            # either the departure date and/or the vehicle has changed for this departure so send an update
+            return True
+
 
     def new_unique_reservation(self, reservation):
         # if the reservation has already been assigned to this vehicle and the departure date is the same then no need to update it
@@ -290,57 +315,52 @@ class AlgoDepot(AssetDepot):
                 self.move_charge[vehicle.id] = vehicle
 
 
-    # todo: need to change this code to look at assigned_reservations and assign a station because sorted soc vehicles already done and assigned
     def assign_charging_stations(self):
-        """
-        sort through the earliest departure reservations and prioritize those assigned vehicles first:
-            if vehicle can meet reservation on L2 then prefer_L2 else prefer_DCFC and repeat
 
-            if we pair a vehicle with the res then pop that vehicle out of our available list
-        """
-        vehicles_soc_sorted = self.sort_vehicles_highest_soc_first_by_type(vehicle_type='any')
-        reservations_departure_sorted = self.sort_departures_earliest_first(vehicle_type='any')
+        # create ordered list of assigned reservations by departure date ascending
+        sorted_reservation_assignments = sorted(self.reservation_assignments.values(), key=lambda x: x.departure_timestamp_utc)
 
-        # loop starting with reservation departing first and the highest SOC vehicle
-        # make sure we have available vehicles before assignment
-        if len(vehicles_soc_sorted) > 0:
-            for res_idx, reservation in enumerate(reservations_departure_sorted):
+        # cycle through starting with soonest departure and assign a station per reservation and status charging
+        for reservation in sorted_reservation_assignments:
 
-                # make sure we have available vehicles before assignment
-                if len(vehicles_soc_sorted) == 0:
-                    break
+            # no need to assign the charging station since no vehicle being assigned
+            if reservation.assigned_vehicle_id == None:
+                continue
 
+            # pull the vehicle from the reservation
+            vehicle = self.vehicles[reservation.assigned_vehicle_id]
 
-                # more vehicles than reservations, lets us cycle through all the reservations
-                # the first vehicle in the sorted list will always be the highest SOC vehicle available
-                vehicle = self.vehicles[vehicles_soc_sorted[0].id]
+            # If the vehicle is ~ 80% full we don't need to optimize station assignments
+            if vehicle.state_of_charge < 0.8:
 
+                # determine if L2 can charge fast enough
                 l2_capable = vehicle.can_meet_reservation_deadline_at_l2(
                     depature_datetime=reservation.departure_timestamp_utc,
                     charging_rate_kw=self.l2_charging_rate_kw,
                     # 15 minute padding
-                    padding_seconds=60*15
+                    padding_seconds=60 * 15
                 )
 
-                # we don't need to optimized charging stations if the vehicle already has > 80% soc,
-                # 0.79 in case of rounding error on charging time cycle
-                if vehicle.state_of_charge < 0.79:
-                    # if the vehicle can charge up in time with L2
-                    if l2_capable:
-                        available_l2_station = self.prefer_l2()
-                        # if we could not find an L2 nor a DCFC then we can't assign a charging station
-                        if isinstance(available_l2_station, int):
-                            vehicle.connected_station_id = available_l2_station
-                            vehicle.status = 'charging'
-                            self.move_charge[vehicle.id] = vehicle
-                            # remove the first vehicle from our available list
-                            vehicles_soc_sorted.pop(0)
-                    else:
-                        available_dcfc_station = self.prefer_dcfc()
-                        # if we could not find an L2 nor a DCFC then we can't assign a charging station
-                        if isinstance(available_dcfc_station, int):
-                            vehicle.connected_station_id = available_dcfc_station
-                            vehicle.status = 'charging'
-                            self.move_charge[vehicle.id] = vehicle
-                            # remove the first vehicle from our available list
-                            vehicles_soc_sorted.pop(0)
+                if l2_capable:
+
+                    # prefer L2
+                    # determine if any L2 is available
+                    available_l2_station = self.prefer_l2()
+
+                    if isinstance(available_l2_station, int):
+                        # assign the station to the vehicle
+                        vehicle.connected_station_id = available_l2_station
+                        vehicle.status = 'charging'
+                        self.move_charge[vehicle.id] = vehicle
+
+                else:
+
+                    # prefer DCFC
+                    # determine if any DCFC is available
+                    available_dcfc_station = self.prefer_dcfc()
+                    # if we could not find an L2 nor a DCFC then we can't assign a charging station
+                    if isinstance(available_dcfc_station, int):
+                        # assign the station to the vehicle
+                        vehicle.connected_station_id = available_dcfc_station
+                        vehicle.status = 'charging'
+                        self.move_charge[vehicle.id] = vehicle

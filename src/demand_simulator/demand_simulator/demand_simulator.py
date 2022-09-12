@@ -89,7 +89,8 @@ class DemandSimulator(MsgBroker):
                         "created_at_timestamp_utc": self.current_datetime,
                         "vehicle_type": vehicle_type,
                         "state_of_charge": 0.8,
-                        "walk_in": walk_in
+                        "walk_in": walk_in,
+                        "status": 'created'
                     }
                 self.reservations[id] = Reservation(**res_dict)
         else:

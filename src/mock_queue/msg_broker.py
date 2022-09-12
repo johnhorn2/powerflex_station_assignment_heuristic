@@ -30,10 +30,7 @@ class MsgBroker(BaseModel):
 
             # We need to capture the stream of reservation assignments to evaluate how verbose and accurate they are
             if object_type == 'reservation':
-                try:
-                    object = Reservation.parse_obj(object_dict)
-                except:
-                    print('poo')
+                object = Reservation.parse_obj(object_dict)
 
                 if route == 'reservation_assignments':
                     # assumes we sent an assignment for this vehicle before

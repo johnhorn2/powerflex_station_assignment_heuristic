@@ -126,6 +126,7 @@ class AssetDepot(MsgBroker):
         for reservation in departures:
             # if we have as assigned vehicle id and it is time to depart then depart
             if isinstance(reservation.assigned_vehicle_id, int):
+
                 # need to unplug otherwise state gets overwritten as 'finished charging' instead of 'driving'
                 self.vehicles[reservation.assigned_vehicle_id].unplug()
                 self.vehicles[reservation.assigned_vehicle_id].status = 'driving'
