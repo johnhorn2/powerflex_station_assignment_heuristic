@@ -60,7 +60,7 @@ class AlgoDepot(AssetDepot):
         self.assign_vehicles_reservations_by_type_and_highest_soc()
 
         # assign charging station/vehicle pairs
-        self.assign_charging_stations()
+        self.assign_charging_stations_to_reservations()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
 
@@ -315,7 +315,7 @@ class AlgoDepot(AssetDepot):
                 self.move_charge[vehicle.id] = vehicle
 
 
-    def assign_charging_stations(self):
+    def assign_charging_stations_to_reservations(self):
 
         # create ordered list of assigned reservations by departure date ascending
         sorted_reservation_assignments = sorted(self.reservation_assignments.values(), key=lambda x: x.departure_timestamp_utc)
@@ -364,3 +364,20 @@ class AlgoDepot(AssetDepot):
                         vehicle.connected_station_id = available_dcfc_station
                         vehicle.status = 'charging'
                         self.move_charge[vehicle.id] = vehicle
+
+    def assign_charging_station_to_walk_ins(self):
+        # e.g. if we need 5 walk-in ready sedans but have only 4 then we need a sedan prioritized and ideally one with higher SOC
+
+        # Do we have any available charging stations
+        if self.l2_is_available() or self.dcfc_is_available():
+
+            # Prioritize by walk-in vehicle type deficit
+            pass
+
+
+    def assign_charging_stations_to_remaining_vehicles(self):
+
+        # Do we have any available charging stations
+        if self.l2_is_available() or self.dcfc_is_available():
+            pass
+

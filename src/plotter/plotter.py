@@ -97,12 +97,25 @@ class Plotter(BaseModel):
             # assumes the vehicle had a reservation assigned to it
             try:
                 for res in dictionary_of_assigned_reservations[vehicle_id]:
-                    hover_values = [
-                                'created <br>' + str(res.created_at_timestamp_utc),
-                                'assigned <br>' + str(res.assigned_at_timestamp_utc),
-                                'requested_departure <br>' + str(res.departure_timestamp_utc)
-                                ]
-                    text_values = ['created', 'assigned', 'departure']
+                    # regular reservations
+                    if res.walk_in == False:
+                        hover_values = [
+                                    'created <br>' + str(res.created_at_timestamp_utc),
+                                    'assigned <br>' + str(res.assigned_at_timestamp_utc),
+                                    'requested_departure <br>' + str(res.departure_timestamp_utc)
+                                    ]
+                        text_values = ['created', 'assigned', 'departure']
+                    elif res.walk_in == True:
+                        hover_values = [
+                            'walk-in <br>' + str(res.created_at_timestamp_utc),
+                            'walk-in assigned <br>' + str(res.assigned_at_timestamp_utc),
+                            'walk-in departure <br>' + str(res.departure_timestamp_utc)
+                        ]
+                        text_values = ['walk-in', 'walk-in assigned', 'walk-in departure']
+
+
+
+
                     fig.add_trace(
                         go.Scatter(
                             mode='markers+text',
@@ -143,35 +156,6 @@ class Plotter(BaseModel):
         # )
 
         fig.update_layout(height=n_plots*200, title_text="Vehicle (%) SOC Over Time")
-
-
-
-
-
-
-        # fig = px.line(dataframe, x="datetime", y=dataframe.columns,
-        #               hover_data={"datetime": "|%B %d, %Y %I:%M:%S"},
-        #               title='SOC at Depot',
-        #               width=1400, height=600)
-        # fig.update_xaxes(
-        #     dtick='H1',
-        #     tickformat='%d %H:%M'
-        #     )
-
-        # fig.update_yaxes(
-        #     tickformat= ',.0%',
-        #     range= [0, 1.05]
-        # )
-
-        # fig.update_layout(
-        #     yaxis_title='(%) SOC at Depot',
-        #     legend_title_text='vehicle_id'
-        # )
-
-        # fig = go.Figure(
-        #     data=[go.Bar(y=[2, 1, 3])],
-        #     layout_title_text="A Figure Displayed with fig.show()"
-        # )
         return fig
 
 

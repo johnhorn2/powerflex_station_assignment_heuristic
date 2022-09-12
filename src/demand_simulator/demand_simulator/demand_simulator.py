@@ -113,22 +113,25 @@ class DemandSimulator(MsgBroker):
             # self.reservations = self.generate_reservations_24_hours_ahead(self.current_datetime)
             self.generate_reservations_24_hours_ahead(self.current_datetime)
 
-            self.publish_to_queue('reservations', 'reservations')
-            self.reservations = {}
-
     def run_interval(self):
 
         self.subscribe_to_queue('vehicles', 'vehicle', 'vehicles_demand_sim')
 
         # self.process_driving_vehicle_for_future_arrival()
 
-        n_res = self.get_event('reservation', self.current_datetime)
+        # n_res = self.get_event('reservation', self.current_datetime)
 
         n_walk_ins = self.get_event('walk_in', self.current_datetime)
 
+        # if the hour is midnight then this will fire and generate multiple reservations created at midnight a day ahead
         self.generate_reservations_at_midnight()
         # self.send_qr_scans_upon_vehicle_arrival()
 
         if n_walk_ins > 0:
             # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time
-            self.make_reservations(n_res, self.current_datetime + timedelta(minutes=15), walk_in=True)
+            self.make_reservations(n_walk_ins, self.current_datetime + timedelta(minutes=15), walk_in=True)
+
+        # publish any random reservations or walkins created
+        self.publish_to_queue('reservations', 'reservations')
+        # purge local memory of those newly generated reservations
+        self.reservations = {}
