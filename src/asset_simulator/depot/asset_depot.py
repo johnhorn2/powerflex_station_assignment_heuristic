@@ -7,18 +7,22 @@ from pydantic import BaseModel
 import numpy as np
 
 from src.asset_simulator.station.station import Station
+from src.asset_simulator.station.station_fleet import StationFleet
 from src.asset_simulator.vehicle.vehicle import Vehicle
+from src.asset_simulator.vehicle.vehicle_fleet import VehicleFleet
 from src.asset_simulator.schedule.schedule import Schedule
 from src.mock_queue.msg_broker import MsgBroker
 from src.asset_simulator.reservation.reservation import Reservation
+from src.asset_simulator.depot.fleet_manager import FleetManager
 from src.mock_queue.mock_queue import MockQueue
 
 
 class AssetDepot(MsgBroker):
     interval_seconds: int
     current_datetime: datetime = datetime(year=2022, month=1, day=1, hour=0)
-    stations: Optional[Dict[int, Station]] = {}
-    vehicles: Optional[Dict[int, Vehicle]] = {}
+    # stations: Optional[Dict[int, Station]] = {}
+    # vehicles: Optional[Dict[int, Vehicle]] = {}
+    fleet_manager: FleetManager
     move_charge: Optional[Dict[int, Vehicle]] = {}
     reservations: Optional[Dict[int, Reservation]] = {}
     schedule: Schedule
@@ -31,6 +35,19 @@ class AssetDepot(MsgBroker):
     vehicles_out_driving: Dict[int, Tuple] = {}
     trip_config: Dict
 
+
+    @property
+    def vehicles(self):
+        return self.fleet_manager.vehicles
+
+    @vehicles.setter
+    def vehicles(self, vehicles):
+        self.fleet_manager.vehicle_fleet.vehicles = vehicles
+
+    @property
+    def stations(self):
+        return self.fleet_manager.stations
+
     def increment_interval(self):
         # capture the current values for plotting later
         self.capture_vehicle_snapshot()
@@ -38,7 +55,6 @@ class AssetDepot(MsgBroker):
 
         interval_seconds = self.interval_seconds
         self.current_datetime = self.current_datetime + timedelta(seconds=interval_seconds)
-
 
     def capture_vehicle_snapshot(self):
 
@@ -65,7 +81,6 @@ class AssetDepot(MsgBroker):
         for vehicle in self.vehicles.values():
             # if not driving log the SOC
             self.vehicle_status_snapshot[vehicle.id].append(vehicle.status)
-
 
     def capture_departure_snapshot(self, reservation_id, vehicle_id, on_time_departure, scheduled_departure_datetime, state_of_charge):
 
@@ -154,21 +169,12 @@ class AssetDepot(MsgBroker):
                 )
                 # print('missed departure')
 
-    def move_vehicles(self):
-        # todo based on heuristic commands
-        pass
-
-    def is_duplicate_vehicle_assignments(self):
-        # determine if that vehicle id is already assigned to a different reservation
-        # by creatig a dictionary of {vehicle_id: reservations) and ensuring a match on res_id
-        reserved_vehicle_ids = [res.assigned_vehicle_id for res in self.reservations.values() if res.assigned_vehicle_id != None]
-        return len(set(reserved_vehicle_ids)) != len(reserved_vehicle_ids)
-
-
-
     def run_interval(self):
         #todo: only doing simple moves to parking for now, need to do moves to stations
         self.subscribe_to_queue('move_charge', 'vehicle', 'move_charge')
+
+        # if any vehicles are 80% or fully charged free up their stations
+        self.fleet_manager.free_up_ready_vehicles()
 
         # important to depart vehicles first thing so that we don't assign the vehicles other tasks afterwards when it should be gone
         self.depart_vehicles()
@@ -209,7 +215,6 @@ class AssetDepot(MsgBroker):
         decrease soc of any vehicles out on a job based on interval
         """
 
-        self.move_vehicles()
         self.charge_vehicles()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
@@ -217,53 +222,9 @@ class AssetDepot(MsgBroker):
         self.publish_to_queue('vehicles', 'vehicles_heuristic')
         self.publish_to_queue('stations', 'stations')
 
-
     def execute_move_charge_instructions(self):
-        self.park_finished_vehicles()
-        self.move_vehicle_to_charging_station()
-
-
-    def move_vehicle_to_charging_station(self):
-        moved_to_station = []
-        for vehicle in self.move_charge.values():
-            # only applies to vehicles that are parked or charging
-            if vehicle.status == 'charging' and self.vehicles[vehicle.id].status in ('charging', 'parked'):
-                self.plugin(vehicle.id, vehicle.connected_station_id)
-                moved_to_station.append(vehicle.id)
-
-        # remove item from move_charge instructions list
-        for vehicle_id in moved_to_station:
-            del self.move_charge[vehicle_id]
-
-
-    def park_finished_vehicles(self):
-        moved_to_parking_lot = []
-        for vehicle in self.move_charge.values():
-            # parking is easy because we don't need to free up anything to move a vehicle from charging to parked
-            # we don't want to override a 'driving' status, so we limit transitions from charging and finished_charging
-            if vehicle.status == 'parked' and self.vehicles[vehicle.id].status in ('charging', 'finished_charging'):
-                self.park(vehicle.id)
-                moved_to_parking_lot.append(vehicle.id)
-
-        # remove item from move_charge instructions list
-        for vehicle_id in moved_to_parking_lot:
-            del self.move_charge[vehicle_id]
-
-    def plugin(self, vehicle_id, station_id):
-        self.vehicles[vehicle_id].plugin(station_id)
-        self.stations[station_id].plugin(vehicle_id)
-
-    def unplug(self, vehicle_id):
-        # cycle through stations to unplug based on vehicle id
-        for station in self.stations.values():
-            if station.connected_vehicle_id == vehicle_id:
-                self.stations[station.id].unplug()
-        self.vehicles[vehicle_id].unplug()
-
-    def park(self, vehicle_id):
-        if self.vehicles[vehicle_id].is_plugged_in():
-            self.unplug(vehicle_id)
-        self.vehicles[vehicle_id].status = 'parked'
+        # self.park_finished_vehicles()
+        self.fleet_manager.move_vehicles_to_charging_station(self.move_charge)
 
     def initialize_plugins(self):
 
@@ -275,14 +236,13 @@ class AssetDepot(MsgBroker):
             for idx in range(0, len(station_ids)):
                 station_id = station_ids[idx]
                 vehicle_id = vehicle_ids[idx]
-                self.plugin(vehicle_id, station_id)
+                self.fleet_manager.plugin(vehicle_id, station_id)
 
         # n vehicles < stations
         elif len(self.vehicles) < len(self.stations):
             for idx, vehicle_id in enumerate(self.vehicles.keys()):
                 station_id = station_ids[idx]
-                self.plugin(vehicle_id, station_id)
-
+                self.fleet_manager.plugin(vehicle_id, station_id)
 
     def decrease_soc_of_vehicles_driving(self):
         for vehicle_id, driving_meta_data in self.vehicles_out_driving.items():
@@ -304,7 +264,6 @@ class AssetDepot(MsgBroker):
             self.vehicles[vehicle_id].status = 'parked'
             # del self.vehicles[vehicle_id]
             del self.vehicles_out_driving[vehicle_id]
-
 
     def process_driving_vehicle_for_future_arrival(self):
         # scan vehicles for driving status
@@ -381,6 +340,10 @@ class AssetDepot(MsgBroker):
                 )
                 vehicles[vehicle_idx] = vehicle
 
+        station_fleet = StationFleet(stations=stations)
+        vehicle_fleet = VehicleFleet(vehicles=vehicles)
+        fleet_manager = FleetManager(vehicle_fleet=vehicle_fleet, station_fleet=station_fleet)
+
         # schedule = Schedule(reservations=reservations)
         schedule = {}
 
@@ -394,8 +357,9 @@ class AssetDepot(MsgBroker):
         depot = AssetDepot(
             interval_seconds=config.interval_seconds,
             queue=queue,
-            stations=stations,
-            vehicles=vehicles,
+            # stations=stations,
+            # vehicles=vehicles,
+            fleet_manager=fleet_manager,
             schedule=schedule,
             minimum_ready_vehicle_pool=config.minimum_ready_vehicle_pool,
             vehicle_snapshot={},

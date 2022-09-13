@@ -33,7 +33,7 @@ class AlgoDepot(AssetDepot):
         self.get_qr_scan_events()
 
         # filter out vehicles driving
-        self.vehicles = self.get_vehicles_at_depot(self.vehicles)
+        self.fleet_manager.vehicle_fleet.vehicles = self.fleet_manager.get_available_vehicles_at_depot(self.vehicles)
 
         # filter out vehicles driving and expired reservations
         self.reservations = self.filter_out_expired_reservations(self.reservations)
@@ -42,7 +42,8 @@ class AlgoDepot(AssetDepot):
         # self.depart_vehicles()
 
         # if vehicles are 80% or more filled up then move to parking lot
-        self.free_up_ready_vehicles()
+        # todo: hold off on move commands for this V1
+        # self.free_up_ready_vehicles()
 
 
 
@@ -63,7 +64,7 @@ class AlgoDepot(AssetDepot):
 
         # assign charging station/vehicle pairs
         self.assign_charging_stations_to_reservations()
-        self.assign_charging_station_to_walk_ins()
+        # self.assign_charging_station_to_walk_ins()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
 
@@ -87,7 +88,7 @@ class AlgoDepot(AssetDepot):
 
         return len(set(veh_id_list)) != len(veh_id_list)
 
-
+    # vehicle to job assignment
     def sort_vehicles_highest_soc_first_by_type(self, vehicle_type):
         # we need all vehicles sorted by SOC Descending
         if vehicle_type == 'any':
@@ -112,9 +113,8 @@ class AlgoDepot(AssetDepot):
         return current_reservations
 
 
-    def get_vehicles_at_depot(self, vehicles):
-        available_vehicles = {vehicle.id:vehicle for vehicle in vehicles.values() if vehicle.status != 'driving'}
-        return available_vehicles
+    # depot related functions
+
 
 
     def assign_vehicles_reservations_by_type_and_highest_soc(self):
@@ -317,16 +317,6 @@ class AlgoDepot(AssetDepot):
             return self.get_available_l2_station()
         else:
             return None
-
-
-    def free_up_ready_vehicles(self):
-        # if a vehicle is finished charging or 80% done then park it instead of charge it
-        for vehicle in self.vehicles.values():
-            if vehicle.state_of_charge >= 0.8 and vehicle.status in ('charging', 'finished_charging'):
-                vehicle.connected_station_id = None
-                vehicle.status = 'parked'
-                self.move_charge[vehicle.id] = vehicle
-
 
     def assign_charging_stations_to_reservations(self):
 
