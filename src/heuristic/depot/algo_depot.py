@@ -29,6 +29,12 @@ class AlgoDepot(AssetDepot):
         # collect any instructions from the queue
         self.poll_queues()
 
+        # scan QR events - adds newly available vehicles
+        self.get_qr_scan_events()
+
+        # filter out vehicles driving
+        self.vehicles = self.get_vehicles_at_depot(self.vehicles)
+
         # filter out vehicles driving and expired reservations
         self.reservations = self.filter_out_expired_reservations(self.reservations)
 
@@ -38,11 +44,7 @@ class AlgoDepot(AssetDepot):
         # if vehicles are 80% or more filled up then move to parking lot
         self.free_up_ready_vehicles()
 
-        # scan QR events
-        self.get_qr_scan_events()
 
-        # filter out vehicles driving
-        self.vehicles = self.get_available_vehicles(self.vehicles)
 
         # update assets based on those instructions
         # many of these actions will come from the heuristic algorithm
@@ -61,6 +63,7 @@ class AlgoDepot(AssetDepot):
 
         # assign charging station/vehicle pairs
         self.assign_charging_stations_to_reservations()
+        self.assign_charging_station_to_walk_ins()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
 
@@ -73,6 +76,9 @@ class AlgoDepot(AssetDepot):
 
         # send the move/charge instructions to the asset depot simulator
         self.publish_to_queue('move_charge', 'move_charge')
+
+        # after each submission we wipe move_charge local
+        self.move_charge = {}
 
     def assigned_dup_veh_ids_to_res(self):
         veh_id_list = []
@@ -106,7 +112,7 @@ class AlgoDepot(AssetDepot):
         return current_reservations
 
 
-    def get_available_vehicles(self, vehicles):
+    def get_vehicles_at_depot(self, vehicles):
         available_vehicles = {vehicle.id:vehicle for vehicle in vehicles.values() if vehicle.status != 'driving'}
         return available_vehicles
 
@@ -197,12 +203,12 @@ class AlgoDepot(AssetDepot):
             # this reservation has not been assigned before
             return True
 
-    def walk_in_pool_meets_minimum_critiera(self):
-        walk_in_ready = [vehicle for vehicle in self.walk_in_pool if vehicle.state_of_charge >= 0.8]
-        if len(walk_in_ready) > self.minimum_ready_vehicle_pool:
-            return True
-        else:
-            return False
+    # def walk_in_pool_meets_minimum_critiera(self):
+    #     walk_in_ready = [vehicle for vehicle in self.walk_in_pool if vehicle.state_of_charge >= 0.8]
+    #     if len(walk_in_ready) > self.minimum_ready_vehicle_pool:
+    #         return True
+    #     else:
+    #         return False
 
     def l2_is_available(self):
         available_l2_station = self.get_available_l2_station()
@@ -211,10 +217,17 @@ class AlgoDepot(AssetDepot):
         else:
             return False
 
+    def is_station_reserved(self, station_id):
+        # determine if we assigned this station to a reservation in flight
+        for instruction in self.move_charge.values():
+            if instruction.connected_station_id == station_id:
+                return True
+        return False
+
     def get_available_l2_station(self):
         # return first L2 station available
         for station in self.stations.values():
-            if station.is_available() and station.is_l2():
+            if station.is_available() and station.is_l2() and not self.is_station_reserved(station.id):
                 return station.id
         #No L2 available
         return None
@@ -229,7 +242,7 @@ class AlgoDepot(AssetDepot):
     def get_available_dcfc_station(self):
         # return first DCFC station available
         for station in self.stations.values():
-            if station.is_available() and station.is_dcfc():
+            if station.is_available() and station.is_dcfc() and not self.is_station_reserved(station.id):
                 return station.id
         #No DCFC available
         return None
@@ -365,19 +378,76 @@ class AlgoDepot(AssetDepot):
                         vehicle.status = 'charging'
                         self.move_charge[vehicle.id] = vehicle
 
+    def vehicle_is_currently_reserved(self, vehicle_id):
+        for reservation in self.reservation_assignments.values():
+            if reservation.assigned_vehicle_id == vehicle_id:
+                return True
+        return False
+
+
+    def vehicle_assigned_move_charge_instruction(self, vehicle_id):
+        for instruction in self.move_charge.values():
+            if vehicle_id == instruction.id:
+                return True
+        return False
+
+    def get_vehicles_free_for_walk_ins(self):
+        # This removes vehicles:
+        # - assigned to reservations
+        # - assigned a move/charge instruction
+
+        available_vehicle_ids = []
+        for vehicle in self.vehicles.values():
+            if not self.vehicle_is_currently_reserved(vehicle.id) and not self.vehicle_assigned_move_charge_instruction(vehicle.id):
+                available_vehicle_ids.append(vehicle)
+        return available_vehicle_ids
+
+    def get_walk_in_deficit(self):
+        # create a list of stations left over not already assigned a reservation
+        available_vehicles = self.get_vehicles_free_for_walk_ins()
+
+        distinct_vehicle_types_for_walk_in = list(set(self.minimum_ready_vehicle_pool.keys()))
+
+        available_vehicle_cnt_by_type  = {type: 0 for type in distinct_vehicle_types_for_walk_in}
+
+        for vehicle in available_vehicles:
+            available_vehicle_cnt_by_type[vehicle.type] += 1
+
+        walk_in_deficit = self.minimum_ready_vehicle_pool
+
+        for vehicle_type, n_req in walk_in_deficit.items():
+            walk_in_deficit[vehicle_type] = max(0, n_req - available_vehicle_cnt_by_type[vehicle_type])
+
+        return walk_in_deficit
+
+    def is_walk_in_deficit(self):
+        walk_in_deficit = self.get_walk_in_deficit()
+        for deficit in walk_in_deficit.values():
+            if deficit > 0:
+                return True
+        return False
+
+
     def assign_charging_station_to_walk_ins(self):
-        # e.g. if we need 5 walk-in ready sedans but have only 4 then we need a sedan prioritized and ideally one with higher SOC
-
-        # Do we have any available charging stations
-        if self.l2_is_available() or self.dcfc_is_available():
-
-            # Prioritize by walk-in vehicle type deficit
-            pass
 
 
-    def assign_charging_stations_to_remaining_vehicles(self):
+        # do we need more vehicles for walk-ins
+        if self.is_walk_in_deficit():
 
-        # Do we have any available charging stations
-        if self.l2_is_available() or self.dcfc_is_available():
-            pass
+            # Do we have any available charging stations else no point in continuing assigning charging stations to walk ins
+            if self.l2_is_available() or self.dcfc_is_available():
+
+                for type, amt_needed in self.get_walk_in_deficit():
+
+                    #todo: assign pool deficit veh types to move_charge local list
+
+
+                    pass
+
+
+    # def assign_charging_stations_to_remaining_vehicles(self):
+    #
+    #     Do we have any available charging stations
+        # if self.l2_is_available() or self.dcfc_is_available():
+        #     pass
 
