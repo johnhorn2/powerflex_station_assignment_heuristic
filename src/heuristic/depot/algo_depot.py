@@ -333,7 +333,7 @@ class AlgoDepot(AssetDepot):
             # pull the vehicle from the reservation
             vehicle = self.vehicles[reservation.assigned_vehicle_id]
 
-            # If the vehicle is ~ 80% full we don't need to optimize station assignments
+            # If the vehicle is ~ 80% full we don't need to charge it
             if vehicle.state_of_charge < 0.8:
 
                 # determine if L2 can charge fast enough
@@ -344,29 +344,20 @@ class AlgoDepot(AssetDepot):
                     padding_seconds=60 * 15
                 )
 
-                if l2_capable:
+                if l2_capable and self.l2_is_available():
+                    # assign the station to the vehicle
+                    vehicle.connected_station_id = self.prefer_l2()
+                    vehicle.status = 'charging'
+                    self.move_charge[vehicle.id] = vehicle
 
-                    # prefer L2
-                    # determine if any L2 is available
-                    available_l2_station = self.prefer_l2()
-
-                    if isinstance(available_l2_station, int):
-                        # assign the station to the vehicle
-                        vehicle.connected_station_id = available_l2_station
-                        vehicle.status = 'charging'
-                        self.move_charge[vehicle.id] = vehicle
-
-                else:
+                elif self.dcfc_is_available():
 
                     # prefer DCFC
-                    # determine if any DCFC is available
-                    available_dcfc_station = self.prefer_dcfc()
                     # if we could not find an L2 nor a DCFC then we can't assign a charging station
-                    if isinstance(available_dcfc_station, int):
-                        # assign the station to the vehicle
-                        vehicle.connected_station_id = available_dcfc_station
-                        vehicle.status = 'charging'
-                        self.move_charge[vehicle.id] = vehicle
+                    # assign the station to the vehicle
+                    vehicle.connected_station_id = self.prefer_dcfc()
+                    vehicle.status = 'charging'
+                    self.move_charge[vehicle.id] = vehicle
 
     def vehicle_is_currently_reserved(self, vehicle_id):
         for reservation in self.reservation_assignments.values():

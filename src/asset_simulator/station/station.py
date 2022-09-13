@@ -19,5 +19,5 @@ class Station(BaseModel):
     def plugin(self, vehicle_id):
         self.connected_vehicle_id = vehicle_id
 
-    def unplug(self):
+    def _unplug(self):
         self.connected_vehicle_id = None

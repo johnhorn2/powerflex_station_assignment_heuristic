@@ -143,7 +143,7 @@ class AssetDepot(MsgBroker):
             if isinstance(reservation.assigned_vehicle_id, int):
 
                 # need to unplug otherwise state gets overwritten as 'finished charging' instead of 'driving'
-                self.vehicles[reservation.assigned_vehicle_id].unplug()
+                self.vehicles[reservation.assigned_vehicle_id]._unplug()
                 self.vehicles[reservation.assigned_vehicle_id].status = 'driving'
                 # log the succesful departure for plotting later
                 self.capture_departure_snapshot(
@@ -224,7 +224,10 @@ class AssetDepot(MsgBroker):
 
     def execute_move_charge_instructions(self):
         # self.park_finished_vehicles()
-        self.fleet_manager.move_vehicles_to_charging_station(self.move_charge)
+        self.fleet_manager.move_vehicles_to_charging_station(self.move_charge.values())
+
+        # clear local cache of move_charge commands
+        self.move_charge = {}
 
     def initialize_plugins(self):
 

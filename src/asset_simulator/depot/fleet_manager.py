@@ -28,26 +28,26 @@ class FleetManager(BaseModel):
         self.station_fleet.stations = stations
 
     def plugin(self, vehicle_id, station_id):
-        self.vehicles[vehicle_id].plugin(station_id)
+        self.vehicles[vehicle_id]._plugin(station_id)
         self.stations[station_id].plugin(vehicle_id)
 
     def unplug(self, vehicle_id):
         # cycle through stations to unplug based on vehicle id
         for station in self.stations.values():
             if station.connected_vehicle_id == vehicle_id:
-                self.stations[station.id].unplug()
-        self.vehicles[vehicle_id].unplug()
+                self.stations[station.id]._unplug()
+        self.vehicles[vehicle_id]._unplug()
 
     def park(self, vehicle_id):
         if self.vehicles[vehicle_id].is_plugged_in():
-            self.vehicles[vehicle_id].unplug(vehicle_id)
+            self.vehicles[vehicle_id]._unplug(vehicle_id)
         self.vehicles[vehicle_id].status = 'parked'
 
     def free_up_ready_vehicles(self):
         # if a vehicle is finished charging or 80% done then park it instead of charge it
         for vehicle in self.vehicles.values():
             if vehicle.state_of_charge >= 0.8 and vehicle.status in ('charging', 'finished_charging'):
-                vehicle.unplug()
+                self.unplug(vehicle.id)
                 vehicle.status = 'parked'
 
     # todo: move to vehicle_fleet method
@@ -67,10 +67,3 @@ class FleetManager(BaseModel):
         for vehicle in vehicles:
             self.move_vehicle_to_charging_station(vehicle)
             moved_to_charger.append(vehicle)
-
-        for vehicle in moved_to_charger:
-            del self.move_charge[vehicle]
-
-
-
-

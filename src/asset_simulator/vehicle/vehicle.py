@@ -38,11 +38,11 @@ class Vehicle(BaseModel):
 
 
 
-    def plugin(self, station_id: int):
+    def _plugin(self, station_id: int):
         self.connected_station_id = station_id
         self.update_status()
 
-    def unplug(self):
+    def _unplug(self):
         self.connected_station_id = None
         self.update_status()
 
