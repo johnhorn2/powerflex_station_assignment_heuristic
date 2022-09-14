@@ -66,7 +66,7 @@ class AlgoDepot(AssetDepot):
 
         # assign charging station/vehicle pairs
         self.assign_charging_stations_to_reservations()
-        self.assign_charging_station_to_walk_ins()
+        # self.assign_charging_station_to_walk_ins()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
 
@@ -113,7 +113,7 @@ class AlgoDepot(AssetDepot):
             reservations_departure_sorted = self.sort_departures_earliest_first(vehicle_type)
 
             # remove any vehicles that are dedicated to the walk in pool
-            vehicles_soc_sorted = [vehicle for vehicle in vehicles_soc_sorted if not self.fleet_manager.vehicle_fleet.vehicle_in_walk_in_pool(vehicle.id)]
+            # vehicles_soc_sorted = [vehicle for vehicle in vehicles_soc_sorted if not self.fleet_manager.vehicle_fleet.vehicle_in_walk_in_pool(vehicle.id)]
 
             # need to assign remaining reservations assigned vehicle id of None explicitly to overwrite any previous requests
             delta_vehicles_reservations = len(reservations_departure_sorted) - len(vehicles_soc_sorted)
