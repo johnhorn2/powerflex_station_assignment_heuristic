@@ -10,7 +10,7 @@ import numpy as np
 class Plotter(BaseModel):
 
 
-    def get_soc_timeseries(self, df_soc, df_status, dictionary_of_assigned_reservations):
+    def get_soc_timeseries(self, df_soc, df_status, dictionary_of_assigned_reservations, dictionary_of_assigned_stations, station_fleet):
 
         res_assignments = dictionary_of_assigned_reservations
         vehicle_ids = list(df_soc.columns)[1:]
@@ -20,7 +20,7 @@ class Plotter(BaseModel):
         subplot_titles = []
         for id in vehicle_ids:
             subplot_titles.append('vehicle: ' + str(id) + '<br> (%) SOC')
-            subplot_titles.append('reservations')
+            # subplot_titles.append('reservations')
 
         # set colors per status
         def set_color(status):
@@ -38,7 +38,7 @@ class Plotter(BaseModel):
         # we have n_vehicles SOC time series
         # as well as n_vehicles status bars below each timeseries
         fig = make_subplots(
-            rows= 2*(n_vehicles), # (overlayed) 1 for soc, 1 for status, (new row) 1 for assigned reservations
+            rows= 1*(n_vehicles), # (overlayed) 1 for soc, 1 for status, (new row) 1 for assigned reservations
             # rows=n_vehicles,
             cols=1,
             subplot_titles=subplot_titles,
@@ -54,9 +54,9 @@ class Plotter(BaseModel):
         #     textposition="bottom center"
         # ))
 
-        row_placement = -1
+        row_placement = 0
         for plot_num, vehicle_id in enumerate(vehicle_ids, start=0):
-            row_placement += 2
+            row_placement += 1
 
             fig.add_trace(
                 go.Scatter(
@@ -130,7 +130,40 @@ class Plotter(BaseModel):
                             textposition=['top left', 'middle center', 'bottom right'],
                             # hovertemplate= '%{x}</i>: :%{y:.2f}'
                         ),
-                            row=row_placement+1,
+                            row=row_placement,
+                            col=1
+                    )
+
+                    # fig['layout']['yaxis' + second_axis_num]['title'] = 'reservation'
+            # vehicle never had a reservation assigned to it
+            except KeyError:
+                pass
+
+
+            # assumes the vehicle had a reservation assigned to it
+            try:
+                for vehicle in dictionary_of_assigned_stations[vehicle_id]:
+                    # regular reservations
+                    evse_type = str(station_fleet.stations[vehicle.connected_station_id].type)
+                    hover_values = [
+                                'request sent: ' + str(vehicle.updated_at) + '<br> type: ' + evse_type
+                                ]
+                    text_values = [evse_type]
+
+                    fig.add_trace(
+                        go.Scatter(
+                            mode='text',
+                            x=[
+                                vehicle.updated_at
+                               ],
+                            # we want the points to take the lower half of the plot as the top half already has reservations
+                            y=[0.2],
+                            hovertemplate=hover_values,
+                            text=text_values,
+                            textposition=['middle center'],
+                            # hovertemplate= '%{x}</i>: :%{y:.2f}'
+                        ),
+                            row=row_placement,
                             col=1
                     )
 

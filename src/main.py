@@ -45,7 +45,13 @@ class RuntimeEnvironment(BaseModel):
         df_status = pd.DataFrame.from_dict(self.asset_simulator.vehicle_status_snapshot)
 
         plot = Plotter()
-        soc_chart = plot.get_soc_timeseries(df_soc, df_status, self.asset_simulator.reservation_assignment_snapshot)
+        soc_chart = plot.get_soc_timeseries(
+            df_soc,
+            df_status,
+            self.asset_simulator.reservation_assignment_snapshot,
+            self.asset_simulator.move_charge_snapshot,
+            self.asset_simulator.fleet_manager.station_fleet
+        )
         return (soc_chart, None)
 
 

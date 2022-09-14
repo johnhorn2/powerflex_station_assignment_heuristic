@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -10,6 +11,7 @@ class Vehicle(BaseModel):
     state_of_charge: float
     energy_capacity_kwh: int
     status: str
+    updated_at: Optional[datetime]
     # ['parked' | 'charging' | 'finished_charging', 'driving]
 
 

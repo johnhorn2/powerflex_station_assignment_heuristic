@@ -338,6 +338,8 @@ class AlgoDepot(AssetDepot):
                     # assign the station to the vehicle
                     vehicle.connected_station_id = self.prefer_l2()
                     vehicle.status = 'charging'
+                    # we add the current timestamp so we can plot when the msg was sent later
+                    vehicle.updated_at = self.current_datetime
                     self.move_charge[vehicle.id] = vehicle
 
                 elif self.dcfc_is_available():
@@ -347,6 +349,8 @@ class AlgoDepot(AssetDepot):
                     # assign the station to the vehicle
                     vehicle.connected_station_id = self.prefer_dcfc()
                     vehicle.status = 'charging'
+                    # we add the current timestamp so we can plot when the msg was sent later
+                    vehicle.updated_at = self.current_datetime
                     self.move_charge[vehicle.id] = vehicle
 
     def vehicle_is_currently_reserved(self, vehicle_id):
