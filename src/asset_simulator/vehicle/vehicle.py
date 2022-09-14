@@ -26,6 +26,12 @@ class Vehicle(BaseModel):
     def is_plugged_in(self):
         return isinstance(self.connected_station_id, int)
 
+    def is_below_minimum_soc(self, soc=0.8):
+        if self.state_of_charge < soc:
+            return True
+        elif self.state_of_charge >= soc:
+            return False
+
     def update_status(self):
         if self.is_plugged_in():
             if self.state_of_charge < 1:

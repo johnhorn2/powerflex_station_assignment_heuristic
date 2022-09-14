@@ -29,7 +29,7 @@ class FleetManager(BaseModel):
 
     def plugin(self, vehicle_id, station_id):
         self.vehicles[vehicle_id]._plugin(station_id)
-        self.stations[station_id].plugin(vehicle_id)
+        self.stations[station_id]._plugin(vehicle_id)
 
     def unplug(self, vehicle_id):
         # cycle through stations to unplug based on vehicle id
@@ -51,9 +51,7 @@ class FleetManager(BaseModel):
                 vehicle.status = 'parked'
 
     # todo: move to vehicle_fleet method
-    def get_available_vehicles_at_depot(self, vehicles):
-        available_vehicles = {vehicle.id: vehicle for vehicle in self.vehicles.values() if vehicle.status != 'driving'}
-        return available_vehicles
+
 
     def move_vehicle_to_charging_station(self, vehicle: Vehicle):
         # only applies to vehicles that are parked or charging

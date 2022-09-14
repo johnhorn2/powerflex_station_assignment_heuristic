@@ -16,7 +16,7 @@ class Station(BaseModel):
     def is_available(self):
         return isinstance(self.connected_vehicle_id, int) == False
 
-    def plugin(self, vehicle_id):
+    def _plugin(self, vehicle_id):
         self.connected_vehicle_id = vehicle_id
 
     def _unplug(self):

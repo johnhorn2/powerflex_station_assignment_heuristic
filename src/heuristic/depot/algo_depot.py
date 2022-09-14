@@ -10,7 +10,6 @@ from src.asset_simulator.vehicle.vehicle import Vehicle
 
 class AlgoDepot(AssetDepot):
     walk_in_pool: Optional[Dict[int, Vehicle]] = {}
-    minimum_ready_vehicle_pool: Dict
     reservation_assignments: Dict[str, Reservation] = {}
     past_reservation_assignments: Dict[str, Reservation] = {}
     qr_scans: Optional[Dict[int, Vehicle]] = {}
@@ -32,8 +31,11 @@ class AlgoDepot(AssetDepot):
         # scan QR events - adds newly available vehicles
         self.get_qr_scan_events()
 
+        # calculate our walk in pool
+        self.allocate_vehicles_to_walk_in_pool()
+
         # filter out vehicles driving
-        self.fleet_manager.vehicle_fleet.vehicles = self.fleet_manager.get_available_vehicles_at_depot(self.vehicles)
+        self.fleet_manager.vehicle_fleet.vehicles = self.fleet_manager.vehicle_fleet.get_available_vehicles_at_depot()
 
         # filter out vehicles driving and expired reservations
         self.reservations = self.filter_out_expired_reservations(self.reservations)
@@ -64,7 +66,7 @@ class AlgoDepot(AssetDepot):
 
         # assign charging station/vehicle pairs
         self.assign_charging_stations_to_reservations()
-        # self.assign_charging_station_to_walk_ins()
+        self.assign_charging_station_to_walk_ins()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
 
@@ -81,23 +83,7 @@ class AlgoDepot(AssetDepot):
         # after each submission we wipe move_charge local
         self.move_charge = {}
 
-    def assigned_dup_veh_ids_to_res(self):
-        veh_id_list = []
-        for res in self.reservation_assignments.values():
-            veh_id_list.append(res.assigned_vehicle_id)
-
-        return len(set(veh_id_list)) != len(veh_id_list)
-
     # vehicle to job assignment
-    def sort_vehicles_highest_soc_first_by_type(self, vehicle_type):
-        # we need all vehicles sorted by SOC Descending
-        if vehicle_type == 'any':
-            return sorted(self.vehicles.values(), key=lambda x: x.state_of_charge, reverse=True)
-        else:
-            # we need a subset of vehicles sorted by departure ascending
-            subset_by_vehicle_type = [vehicle for vehicle in self.vehicles.values() if vehicle.type == vehicle_type]
-            return sorted(subset_by_vehicle_type, key=lambda x: x.state_of_charge, reverse=True)
-
     def sort_departures_earliest_first(self, vehicle_type):
         # we need all vehicles sorted by departure ascending
         if vehicle_type == 'any':
@@ -123,7 +109,7 @@ class AlgoDepot(AssetDepot):
 
         for vehicle_type in vehicle_types:
 
-            vehicles_soc_sorted = self.sort_vehicles_highest_soc_first_by_type(vehicle_type)
+            vehicles_soc_sorted = self.fleet_manager.vehicle_fleet.sort_vehicles_highest_soc_first_by_type(self.vehicles.values(), vehicle_type)
             reservations_departure_sorted = self.sort_departures_earliest_first(vehicle_type)
 
             # need to assign remaining reservations assigned vehicle id of None explicitly to overwrite any previous requests
@@ -379,23 +365,26 @@ class AlgoDepot(AssetDepot):
 
         available_vehicle_ids = []
         for vehicle in self.vehicles.values():
-            if not self.vehicle_is_currently_reserved(vehicle.id) and not self.vehicle_assigned_move_charge_instruction(vehicle.id):
+            if not self.vehicle_is_currently_reserved(vehicle.id) and not self.vehicle_assigned_move_charge_instruction(vehicle.id) and not self.fleet_manager.vehicle_fleet.vehicle_in_walk_in_pool(vehicle.id) and vehicle.status != 'driving':
                 available_vehicle_ids.append(vehicle)
         return available_vehicle_ids
 
     def get_walk_in_deficit(self):
         # create a list of stations left over not already assigned a reservation
-        available_vehicles = self.get_vehicles_free_for_walk_ins()
+        walk_in_pool = self.fleet_manager.vehicle_fleet.walk_in_pool
 
-        distinct_vehicle_types_for_walk_in = list(set(self.minimum_ready_vehicle_pool.keys()))
+        minimum_ready_vehicle_pool = self.fleet_manager.vehicle_fleet.minimum_ready_vehicle_pool
+        distinct_vehicle_types_for_walk_in = list(set(minimum_ready_vehicle_pool.keys()))
 
         available_vehicle_cnt_by_type  = {type: 0 for type in distinct_vehicle_types_for_walk_in}
 
-        for vehicle in available_vehicles:
+        # create a count of our walk in pool by type
+        for vehicle in walk_in_pool.values():
             available_vehicle_cnt_by_type[vehicle.type] += 1
 
-        walk_in_deficit = self.minimum_ready_vehicle_pool
+        walk_in_deficit = minimum_ready_vehicle_pool
 
+        # subtract our walk in pool counts from our minimum ready vehicle requirement, don't allow negative values
         for vehicle_type, n_req in walk_in_deficit.items():
             walk_in_deficit[vehicle_type] = max(0, n_req - available_vehicle_cnt_by_type[vehicle_type])
 
@@ -409,26 +398,43 @@ class AlgoDepot(AssetDepot):
         return False
 
 
+    def allocate_vehicles_to_walk_in_pool(self):
+        if self.is_walk_in_deficit():
+            vehicle_candidates = self.get_vehicles_free_for_walk_ins()
+
+            # assign the highest soc vehicles to walk in pool by type
+            for type, amt_needed in self.get_walk_in_deficit().items():
+                vehicles_soc_sorted_by_type = self.fleet_manager.vehicle_fleet.sort_vehicles_highest_soc_first_by_type(vehicle_candidates, type)
+                target_vehicles = vehicles_soc_sorted_by_type[0:amt_needed]
+                for vehicle in target_vehicles:
+                    self.fleet_manager.vehicle_fleet.allocate_to_walk_in_pool(vehicle)
+
     def assign_charging_station_to_walk_ins(self):
 
+        # Are there stations available?
+        if (self.l2_is_available() or self.dcfc_is_available()):
 
-        # do we need more vehicles for walk-ins
-        if self.is_walk_in_deficit():
+            for vehicle in self.fleet_manager.vehicle_fleet.walk_in_pool.values():
 
-            # Do we have any available charging stations else no point in continuing assigning charging stations to walk ins
-            if self.l2_is_available() or self.dcfc_is_available():
+                if vehicle.is_below_minimum_soc():
 
-                for type, amt_needed in self.get_walk_in_deficit():
+                    if self.l2_is_available():
+                        available_l2_station = self.prefer_l2()
+                        vehicle.connected_station_id = available_l2_station
+                        self.move_charge[vehicle.id] = vehicle
+                        # need to locally simulate the plugin so we know the station and vehicle will be plugged in
+                        self.fleet_manager.plugin(vehicle.id, available_l2_station.id)
 
-                    #todo: assign pool deficit veh types to move_charge local list
-
-
-                    pass
-
+                    elif self.dcfc_is_available():
+                        available_dcfc_station = self.prefer_dcfc()
+                        vehicle.connected_station_id = available_dcfc_station
+                        self.move_charge[vehicle.id] = vehicle
+                        # need to locally simulate the plugin so we know the station and vehicle will be plugged in
+                        self.fleet_manager.plugin(vehicle.id, available_dcfc_station.id)
 
     # def assign_charging_stations_to_remaining_vehicles(self):
-    #
+
     #     Do we have any available charging stations
-        # if self.l2_is_available() or self.dcfc_is_available():
-        #     pass
+    #     if self.l2_is_available() or self.dcfc_is_available():
+    #         pass
 

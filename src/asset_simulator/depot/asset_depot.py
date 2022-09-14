@@ -28,7 +28,6 @@ class AssetDepot(MsgBroker):
     schedule: Schedule
     l2_charging_rate_kw: float = 12
     dcfc_charging_rate_kw: float = 150
-    minimum_ready_vehicle_pool: Optional[Dict[str, int]]
     vehicle_soc_snapshot: Dict[str, List] = {}
     vehicle_status_snapshot: Dict[str, List] = {}
     departure_snapshot: Dict[str, List] = {}
@@ -344,7 +343,7 @@ class AssetDepot(MsgBroker):
                 vehicles[vehicle_idx] = vehicle
 
         station_fleet = StationFleet(stations=stations)
-        vehicle_fleet = VehicleFleet(vehicles=vehicles)
+        vehicle_fleet = VehicleFleet(vehicles=vehicles, minimum_ready_vehicle_pool=config.minimum_ready_vehicle_pool)
         fleet_manager = FleetManager(vehicle_fleet=vehicle_fleet, station_fleet=station_fleet)
 
         # schedule = Schedule(reservations=reservations)
@@ -364,7 +363,6 @@ class AssetDepot(MsgBroker):
             # vehicles=vehicles,
             fleet_manager=fleet_manager,
             schedule=schedule,
-            minimum_ready_vehicle_pool=config.minimum_ready_vehicle_pool,
             vehicle_snapshot={},
             trip_config=trip_config
         )
