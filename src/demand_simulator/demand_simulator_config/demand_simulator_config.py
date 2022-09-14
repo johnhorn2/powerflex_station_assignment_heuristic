@@ -17,6 +17,4 @@ class DemandSimulatorConfig(BaseModel):
     mean_reservations_per_day: int
     stdev_reservations_per_day: int
 
-    mean_reservation_duration_hours: int
-    stdev_reservation_hours: int
     reservation_types: Dict

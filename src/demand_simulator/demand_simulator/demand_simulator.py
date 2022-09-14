@@ -1,3 +1,4 @@
+from collections import namedtuple
 from datetime import datetime, timedelta
 import json
 import random
@@ -5,7 +6,7 @@ import uuid
 
 import numpy as np
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Tuple
 
 from src.demand_simulator.demand_simulator_config.demand_simulator_config import DemandSimulatorConfig
 from src.asset_simulator.reservation.reservation import Reservation
@@ -18,6 +19,7 @@ class DemandSimulator(MsgBroker):
     current_datetime: datetime = datetime(year=2022, month=1, day=1, hour=0)
     config: DemandSimulatorConfig
     vehicles: Dict[int, Vehicle] = {}
+    # vehicles_out_driving: Dict[int, Tuple] = {}
     reservations: Dict[int, Reservation] = {}
 
 
@@ -46,6 +48,9 @@ class DemandSimulator(MsgBroker):
             scale=getattr(self.config, scale_name),
             size=1
         ))
+
+        # can't have negative events per day
+        n_events_per_day = max(0, n_events_per_day)
 
 
         # bootstrap n times based on hour of day
@@ -81,9 +86,11 @@ class DemandSimulator(MsgBroker):
                     {
                         "id": id,
                         "departure_timestamp_utc": res_datetime,
+                        "created_at_timestamp_utc": self.current_datetime,
                         "vehicle_type": vehicle_type,
                         "state_of_charge": 0.8,
-                        "walk_in": walk_in
+                        "walk_in": walk_in,
+                        "status": 'created'
                     }
                 self.reservations[id] = Reservation(**res_dict)
         else:
@@ -106,19 +113,25 @@ class DemandSimulator(MsgBroker):
             # self.reservations = self.generate_reservations_24_hours_ahead(self.current_datetime)
             self.generate_reservations_24_hours_ahead(self.current_datetime)
 
-            self.publish_to_queue('reservations', 'reservations')
-            self.reservations = {}
-
     def run_interval(self):
 
         self.subscribe_to_queue('vehicles', 'vehicle', 'vehicles_demand_sim')
 
-        n_res = self.get_event('reservation', self.current_datetime)
+        # self.process_driving_vehicle_for_future_arrival()
+
+        # n_res = self.get_event('reservation', self.current_datetime)
 
         n_walk_ins = self.get_event('walk_in', self.current_datetime)
 
+        # if the hour is midnight then this will fire and generate multiple reservations created at midnight a day ahead
         self.generate_reservations_at_midnight()
+        # self.send_qr_scans_upon_vehicle_arrival()
 
         if n_walk_ins > 0:
             # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time
-            self.make_reservations(n_res, self.current_datetime + timedelta(minutes=15), walk_in=True)
+            self.make_reservations(n_walk_ins, self.current_datetime + timedelta(minutes=15), walk_in=True)
+
+        # publish any random reservations or walkins created
+        self.publish_to_queue('reservations', 'reservations')
+        # purge local memory of those newly generated reservations
+        self.reservations = {}
