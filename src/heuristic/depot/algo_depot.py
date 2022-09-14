@@ -112,12 +112,16 @@ class AlgoDepot(AssetDepot):
             vehicles_soc_sorted = self.fleet_manager.vehicle_fleet.sort_vehicles_highest_soc_first_by_type(self.vehicles.values(), vehicle_type)
             reservations_departure_sorted = self.sort_departures_earliest_first(vehicle_type)
 
+            # remove any vehicles that are dedicated to the walk in pool
+            vehicles_soc_sorted = [vehicle for vehicle in vehicles_soc_sorted if not self.fleet_manager.vehicle_fleet.vehicle_in_walk_in_pool(vehicle.id)]
+
             # need to assign remaining reservations assigned vehicle id of None explicitly to overwrite any previous requests
             delta_vehicles_reservations = len(reservations_departure_sorted) - len(vehicles_soc_sorted)
 
             # more reservations than vehicles
             if delta_vehicles_reservations > 0:
                 vehicles_soc_sorted = vehicles_soc_sorted + [None]*delta_vehicles_reservations
+
 
             # no vehicle / reservations to assign
             if len(vehicles_soc_sorted) == 0 or len(reservations_departure_sorted) == 0:
