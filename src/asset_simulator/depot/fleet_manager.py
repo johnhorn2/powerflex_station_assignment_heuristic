@@ -40,7 +40,7 @@ class FleetManager(BaseModel):
 
     def park(self, vehicle_id):
         if self.vehicles[vehicle_id].is_plugged_in():
-            self.vehicles[vehicle_id]._unplug(vehicle_id)
+            self.unplug(vehicle_id)
         self.vehicles[vehicle_id].status = 'parked'
 
     def free_up_ready_vehicles(self):

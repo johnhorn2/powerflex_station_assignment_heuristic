@@ -102,7 +102,8 @@ class Plotter(BaseModel):
                         hover_values = [
                                     'created <br>' + str(res.created_at_timestamp_utc),
                                     'assigned <br>' + str(res.assigned_at_timestamp_utc),
-                                    'requested_departure <br>' + str(res.departure_timestamp_utc)
+                                    'requested_departure <br>' + str(res.departure_timestamp_utc),
+                                    'reservation id <br>' + str(res.id)
                                     ]
                         text_values = ['created', 'assigned', 'departure']
                     elif res.walk_in == True:

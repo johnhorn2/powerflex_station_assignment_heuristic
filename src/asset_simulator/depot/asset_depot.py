@@ -142,12 +142,13 @@ class AssetDepot(MsgBroker):
             if isinstance(reservation.assigned_vehicle_id, int):
 
                 # need to unplug otherwise state gets overwritten as 'finished charging' instead of 'driving'
-                self.vehicles[reservation.assigned_vehicle_id]._unplug()
+                target_vehicle_id = reservation.assigned_vehicle_id
+                self.fleet_manager.unplug(target_vehicle_id)
                 self.vehicles[reservation.assigned_vehicle_id].status = 'driving'
                 # log the succesful departure for plotting later
                 self.capture_departure_snapshot(
                     reservation_id=reservation.id,
-                    vehicle_id=reservation.assigned_vehicle_id,
+                    vehicle_id=target_vehicle_id,
                     on_time_departure=True,
                     scheduled_departure_datetime=reservation.departure_timestamp_utc,
                     state_of_charge=self.vehicles[reservation.assigned_vehicle_id].state_of_charge
