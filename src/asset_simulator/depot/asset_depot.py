@@ -143,6 +143,7 @@ class AssetDepot(MsgBroker):
 
                 if self.vehicles[reservation.assigned_vehicle_id].status == 'driving':
                     # todo: fix the reservation generator
+                    # the departure arrival window cannot overlap an existing departure arrival window for another reservation for an existing vehicle
                     print('we have a reservation open for a vehicle already out driving on another reservation, fix reservation generator to only look at available vehicles')
                     break
 
