@@ -83,7 +83,10 @@ class DemandSimulator(MsgBroker):
         # need to apply a floor to hours driving as normal dist will give negatives
         hours_out_driving = max(2, hours_out_driving)
 
-        arrival_datetime = departure + timedelta(hours=hours_out_driving)
+        hour_decimal = 1/(self.config.interval_seconds/3600)
+        rounded_hour = round(hours_out_driving*hour_decimal)/hour_decimal
+
+        arrival_datetime = departure + timedelta(hours=rounded_hour)
         return arrival_datetime
 
     # def make_reservations(self, n_reservations, res_datetime, walk_in=False):
@@ -113,30 +116,28 @@ class DemandSimulator(MsgBroker):
             arrival = self.generate_arrival_time(departure)
             if self.is_vehicle_available(departure, arrival):
                 available_vehicles = self.get_available_vehicles(departure, arrival)
-                vehicle_type = available_vehicles[0].type
+                vehicle_id = random.randint(0, len(available_vehicles) - 1)
+                vehicle_type = available_vehicles[vehicle_id].type
                 self.send_reservation(departure, arrival, vehicle_type, walk_in)
             else:
-                print('resrvation on heuristic is broken, fix!')
+                pass
 
-    @classmethod
-    def reservation_does_overlap(reservation, departure, arrival):
-        if departure > reservation.arrival:
+    def reservation_does_overlap(self, reservation, departure, arrival):
+        if departure > reservation.arrival_timestamp_utc:
             return False
-        elif arrival < reservation.departure:
+        elif arrival < reservation.departure_timestamp_utc:
             return False
-        elif reservation.departure < arrival < reservation.arrival:
+        elif reservation.departure_timestamp_utc < arrival < reservation.arrival_timestamp_utc:
             return True
-        elif reservation.departure < departure < reservation.arrival:
+        elif reservation.departure_timestamp_utc < departure < reservation.arrival_timestamp_utc:
             return True
 
     def get_available_vehicles(self, departure, arrival):
-        avail_vehicles = []
+        avail_vehicles = [veh.id for veh in self.vehicles.values()]
         unavail_vehicles = []
         for res in self.reservations.values():
             if self.reservation_does_overlap(res, departure, arrival):
-                unavail_vehicles.append(res.vehicle_id)
-            else:
-                avail_vehicles.append(res.vehicle_id)
+                unavail_vehicles.append(res.assigned_vehicle_id)
 
         # get a unique list of vehicles
         avail_vehicles = set(avail_vehicles)
@@ -144,6 +145,7 @@ class DemandSimulator(MsgBroker):
 
         # return available vehicles that do not intersect the unavailable vehicles list
         avail_vehicles = list(avail_vehicles.difference(unavail_vehicles))
+        avail_vehicles = [self.vehicles[veh_id] for veh_id in avail_vehicles]
         return avail_vehicles
        
     def is_vehicle_available(self, departure, arrival):
@@ -154,6 +156,7 @@ class DemandSimulator(MsgBroker):
 
     def send_reservation(self, departure, arrival, vehicle_type, walk_in):
         id = str(uuid.uuid4())
+
         res_dict = \
             {
                 "id": id,

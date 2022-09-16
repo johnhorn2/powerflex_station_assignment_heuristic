@@ -13,7 +13,5 @@
  "n_l2_stations": 10,
  "n_dcfc_stations": 2,
  "l2_max_power_kw":7.2,
- "dcfc_max_power_kw":50,
- "mean_reservation_duration_hours": 48,
- "stdev_reservation_hours": 24
+ "dcfc_max_power_kw":50
 }

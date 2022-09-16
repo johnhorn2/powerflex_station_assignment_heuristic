@@ -131,16 +131,16 @@ print('resrevations tracker')
 for veh_id, cnt in res_tracker.items():
     print('veh:' + str(veh_id) + ', cnt: ' + str(cnt))
 
-departure_tracker = {}
-for veh_id in runtime.asset_simulator.departure_snapshot['vehicle_id']:
-    try:
-        departure_tracker[veh_id] += 1
-    except KeyError:
-        departure_tracker[veh_id] = 1
+# departure_tracker = {}
+# for veh_id in runtime.asset_simulator.departure_snapshot['vehicle_id']:
+#     try:
+#         departure_tracker[veh_id] += 1
+#     except KeyError:
+#         departure_tracker[veh_id] = 1
 
-print('departure tracker')
-for veh_id, cnt in departure_tracker.items():
-    print('veh:' + str(veh_id) + ', cnt: ' + str(cnt))
+# print('departure tracker')
+# for veh_id, cnt in departure_tracker.items():
+#     print('veh:' + str(veh_id) + ', cnt: ' + str(cnt))
 
 # runtime.asset_simulator.departure_snapshot
 

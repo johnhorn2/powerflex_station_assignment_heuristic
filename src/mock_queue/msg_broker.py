@@ -53,7 +53,10 @@ class MsgBroker(BaseModel):
                 object = Station.parse_obj(object_dict)
 
             elif object_type == 'vehicle':
-                object = Vehicle.parse_obj(object_dict)
+                try:
+                    object = Vehicle.parse_obj(object_dict)
+                except:
+                    pass
 
                 if route == 'move_charge':
                     self.capture_msg_inflight_for_plotting(route, object.id, object)
