@@ -20,10 +20,10 @@ class VehicleFleet(BaseModel):
         self.walk_in_pool[vehicle.id] = vehicle
 
     @classmethod
-    def sort_vehicles_highest_soc_first_by_type(self, vehicles, vehicle_type):
+    def sort_vehicles_highest_soc_first_by_type(self, vehicles: List[Vehicle], vehicle_type: str, reverse=True):
         # we need all vehicles sorted by SOC Descending
         if vehicle_type == 'any':
-            return sorted(vehicles.values(), key=lambda x: x.state_of_charge, reverse=True)
+            return sorted(vehicles, key=lambda x: x.state_of_charge, reverse=reverse)
         else:
             # we need a subset of vehicles sorted by departure ascending
             subset_by_vehicle_type = [vehicle for vehicle in vehicles if vehicle.type == vehicle_type]

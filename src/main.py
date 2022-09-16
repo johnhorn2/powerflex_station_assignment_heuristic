@@ -28,7 +28,7 @@ class RuntimeEnvironment(BaseModel):
         for interval in range(0, n_intervals):
 
             pct_complete = 100.0*interval/n_intervals
-            print(str(pct_complete) + ': % complete')
+            # print(str(pct_complete) + ': % complete')
 
             self.demand_simulator.run_interval()
             self.asset_simulator.run_interval()
@@ -69,7 +69,7 @@ mock_queue = MockQueue(
 )
 
 script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
-demand_sim_config = 'demand_simulator/demand_simulator_config/configs/2days_15min_40res_per_day.json'
+demand_sim_config = 'demand_simulator/demand_simulator_config/configs/5days_15min_40res_per_day.json'
 demand_sim_path = os.path.join(script_dir, demand_sim_config)
 
 # setup demand_simulator
@@ -113,5 +113,35 @@ runtime = RuntimeEnvironment(
 )
 
 runtime.run()
+
+# create dictionary for vis dataframe where key: vehicle_id, value: cnt
+vis_tracker = {}
+for veh_id, val in runtime.asset_simulator.reservation_assignment_snapshot.items():
+    vis_tracker[veh_id] = len(val)
+
+# create dictionary for self.reservation dataframe where key: vehicle_id, value: cnt
+res_tracker = {}
+for res in runtime.asset_simulator.reservations.values():
+    try:
+        res_tracker[res.assigned_vehicle_id] += 1
+    except KeyError:
+        res_tracker[res.assigned_vehicle_id] = 1
+
+print('resrevations tracker')
+for veh_id, cnt in res_tracker.items():
+    print('veh:' + str(veh_id) + ', cnt: ' + str(cnt))
+
+departure_tracker = {}
+for veh_id in runtime.asset_simulator.departure_snapshot['vehicle_id']:
+    try:
+        departure_tracker[veh_id] += 1
+    except KeyError:
+        departure_tracker[veh_id] = 1
+
+print('departure tracker')
+for veh_id, cnt in departure_tracker.items():
+    print('veh:' + str(veh_id) + ', cnt: ' + str(cnt))
+
+# runtime.asset_simulator.departure_snapshot
 
 print('simulation complete')

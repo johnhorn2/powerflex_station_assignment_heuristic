@@ -141,10 +141,21 @@ class AssetDepot(MsgBroker):
             # if we have as assigned vehicle id and it is time to depart then depart
             if isinstance(reservation.assigned_vehicle_id, int):
 
+                if self.vehicles[reservation.assigned_vehicle_id].status == 'driving':
+                    # todo: fix the reservation generator
+                    print('we have a reservation open for a vehicle already out driving on another reservation, fix reservation generator to only look at available vehicles')
+                    break
+
                 # need to unplug otherwise state gets overwritten as 'finished charging' instead of 'driving'
                 target_vehicle_id = reservation.assigned_vehicle_id
                 self.fleet_manager.unplug(target_vehicle_id)
                 self.vehicles[reservation.assigned_vehicle_id].status = 'driving'
+
+                print('veh:' + str(reservation.assigned_vehicle_id) + ' ' + str(self.current_datetime) + ' ' + str(reservation.id) + ' ' + str(reservation.departure_timestamp_utc))
+
+
+
+
                 # log the succesful departure for plotting later
                 self.capture_departure_snapshot(
                     reservation_id=reservation.id,
@@ -176,6 +187,10 @@ class AssetDepot(MsgBroker):
         # if any vehicles are 80% or fully charged free up their stations
         self.fleet_manager.free_up_ready_vehicles()
 
+        # the heuristic has assigned a veh id to the reservation
+        # we overwrite the current reservation with that assigned res
+        self.subscribe_to_queue('reservations', 'reservation', 'reservation_assignments')
+
         # important to depart vehicles first thing so that we don't assign the vehicles other tasks afterwards when it should be gone
         self.depart_vehicles()
 
@@ -193,7 +208,7 @@ class AssetDepot(MsgBroker):
 
         # the heuristic has assigned a veh id to the reservation
         # we overwrite the current reservation with that assigned res
-        self.subscribe_to_queue('reservations', 'reservation', 'reservation_assignments')
+        # self.subscribe_to_queue('reservations', 'reservation', 'reservation_assignments')
 
 
 

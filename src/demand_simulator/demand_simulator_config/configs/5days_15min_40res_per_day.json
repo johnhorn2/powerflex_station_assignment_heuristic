@@ -1,5 +1,5 @@
 {
- "horizon_length_hours": 48,
+ "horizon_length_hours": 120,
  "interval_seconds": 900,
 
   "mean_walk_in_hour_of_day": 10,
