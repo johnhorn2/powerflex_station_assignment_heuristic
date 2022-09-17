@@ -272,7 +272,7 @@ class AssetDepot(MsgBroker):
             if res.arrival_timestamp_utc == self.current_datetime and res.assigned_vehicle_id != None:
                 self.publish_object_to_queue(self.vehicles[res.assigned_vehicle_id], 'scan_events')
                 self.reservations[res.id].status = 'complete'
-                self.vehicles[res.assigned_vehicle_id].status = 'parked'
+                self.vehicles[res.assigned_vehicle_id].park(self.current_datetime)
                 self.vehicles[res.assigned_vehicle_id].active_reservation_id = None
 
 

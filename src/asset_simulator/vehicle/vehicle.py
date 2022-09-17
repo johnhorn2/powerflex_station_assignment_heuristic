@@ -91,7 +91,7 @@ class Vehicle(BaseModel):
         self.update_status()
 
     def park(self, datetime):
-        self.depot.parking_lot.vehicles.append(self.id)
+        self.status = 'parked'
         self.add_log(datetime)
 
     def get_reservation_id(self):

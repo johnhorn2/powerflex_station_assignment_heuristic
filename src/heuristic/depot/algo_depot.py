@@ -279,7 +279,8 @@ class AlgoDepot(AssetDepot):
         for vehicle in self.qr_scans.values():
             # update our out driving vehicles with arrivals that have been scanned to 'parked'
             # otherwise if status set to 'driving' it will be excluded from reservation assignments
-            vehicle.status = 'parked'
+            # vehicle.status = 'parked'
+            vehicle.park(self.current_datetime)
             self.vehicles[vehicle.id] = vehicle
 
         # wipe out the internal qr events after moving these vehicles from 'driving' to 'parked'

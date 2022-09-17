@@ -205,7 +205,8 @@ class DemandSimulator(MsgBroker):
 
         if n_walk_ins > 0:
             # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time
-            self.make_reservations(n_walk_ins, self.current_datetime + timedelta(minutes=15), walk_in=True)
+            # self.make_reservations(n_walk_ins, self.current_datetime + timedelta(minutes=15), walk_in=True)
+            pass
 
         # publish any random reservations or walkins created
         self.publish_to_queue('reservations', 'reservations')

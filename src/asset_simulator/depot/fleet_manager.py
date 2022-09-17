@@ -41,7 +41,7 @@ class FleetManager(BaseModel):
     def park(self, vehicle_id):
         if self.vehicles[vehicle_id].is_plugged_in():
             self.unplug(vehicle_id)
-        self.vehicles[vehicle_id].status = 'parked'
+        self.vehicles[vehicle_id].park()
 
     def free_up_ready_vehicles(self):
         # if a vehicle is finished charging or 80% done then park it instead of charge it
