@@ -31,23 +31,23 @@ class FleetManager(BaseModel):
         self.vehicles[vehicle_id]._plugin(station_id)
         self.stations[station_id]._plugin(vehicle_id)
 
-    def unplug(self, vehicle_id):
+    def unplug(self, vehicle_id, current_datetime):
         # cycle through stations to unplug based on vehicle id
         for station in self.stations.values():
             if station.connected_vehicle_id == vehicle_id:
-                self.stations[station.id]._unplug()
+                self.stations[station.id]._unplug(current_datetime)
         self.vehicles[vehicle_id]._unplug()
 
-    def park(self, vehicle_id):
+    def park(self, vehicle_id, current_datetime):
         if self.vehicles[vehicle_id].is_plugged_in():
-            self.unplug(vehicle_id)
+            self.unplug(vehicle_id, current_datetime)
         self.vehicles[vehicle_id].park()
 
-    def free_up_ready_vehicles(self):
+    def free_up_ready_vehicles(self, current_datetime):
         # if a vehicle is finished charging or 80% done then park it instead of charge it
         for vehicle in self.vehicles.values():
             if vehicle.state_of_charge >= 0.8 and vehicle.status in ('charging', 'finished_charging'):
-                self.unplug(vehicle.id)
+                self.unplug(vehicle.id, current_datetime)
                 vehicle.status = 'parked'
 
     # todo: move to vehicle_fleet method

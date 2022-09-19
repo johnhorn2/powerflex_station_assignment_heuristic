@@ -1,6 +1,8 @@
 from collections import namedtuple
+from datetime import timedelta
 import copy
 from operator import attrgetter
+import random
 from typing import Optional, Dict, List
 
 from src.asset_simulator.depot.asset_depot import AssetDepot
@@ -23,7 +25,7 @@ class AlgoDepot(AssetDepot):
         # to re-assign assigned reservations as we get new information on vehicles and reservations
         self.subscribe_to_queue('reservations','reservation', 'reservations')
 
-    def run_interval(self):
+    def run_interval(self, random_sort=False):
 
         # collect any instructions from the queue
         self.poll_queues()
@@ -62,7 +64,7 @@ class AlgoDepot(AssetDepot):
 
 
         # calculate heuristics
-        self.assign_vehicles_reservations_by_type_and_highest_soc()
+        self.assign_vehicles_reservations_by_type_and_highest_soc(random_sort=random_sort)
 
         # assign charging station/vehicle pairs
         self.assign_charging_stations_to_reservations()
@@ -99,12 +101,9 @@ class AlgoDepot(AssetDepot):
                                 if reservation.departure_timestamp_utc > self.current_datetime}
         return current_reservations
 
-
     # depot related functions
 
-
-
-    def assign_vehicles_reservations_by_type_and_highest_soc(self):
+    def assign_vehicles_reservations_by_type_and_highest_soc(self, random_sort=False):
         # create a list of all possible vehicle types
         vehicle_types = list(set([vehicle.type for vehicle in self.vehicles.values()]))
 
@@ -112,6 +111,11 @@ class AlgoDepot(AssetDepot):
 
             vehicles_soc_sorted = self.fleet_manager.vehicle_fleet.sort_vehicles_highest_soc_first_by_type(self.vehicles.values(), vehicle_type)
             reservations_departure_sorted = self.sort_departures_earliest_first(vehicle_type)
+
+            if random_sort:
+                # shuffle in place to mimic random assignment of vehicle to reservation
+                random.shuffle(vehicles_soc_sorted)
+                random.shuffle(reservations_departure_sorted)
 
             # remove any vehicles that are dedicated to the walk in pool
             # vehicles_soc_sorted = [vehicle for vehicle in vehicles_soc_sorted if not self.fleet_manager.vehicle_fleet.vehicle_in_walk_in_pool(vehicle.id)]
@@ -160,8 +164,6 @@ class AlgoDepot(AssetDepot):
                             else:
                                 # only send reervations with no vehicles if there was an update made
                                 pass
-
-
 
     def reservation_is_new(self, reservation):
         try:
@@ -218,7 +220,8 @@ class AlgoDepot(AssetDepot):
     def get_available_l2_station(self):
         # return first L2 station available
         for station in self.stations.values():
-            if station.is_available() and station.is_l2() and not self.is_station_reserved(station.id):
+            # enforce a 5 min wait period after an evse has been unplugged to simulate unplugging and moving prior vehicle from station, otherwise we get teleporting station/vehicle pairs
+            if station.is_available() and station.is_l2() and not self.is_station_reserved(station.id) and self.current_datetime > station.last_unplugged + timedelta(minutes=15):
                 return station.id
         #No L2 available
         return None
@@ -233,7 +236,8 @@ class AlgoDepot(AssetDepot):
     def get_available_dcfc_station(self):
         # return first DCFC station available
         for station in self.stations.values():
-            if station.is_available() and station.is_dcfc() and not self.is_station_reserved(station.id):
+            # enforce a 5 min wait period after an evse has been unplugged to simulate unplugging and moving prior vehicle from station, otherwise we get teleporting station/vehicle pairs
+            if station.is_available() and station.is_dcfc() and not self.is_station_reserved(station.id) and self.current_datetime > station.last_unplugged + timedelta(minutes=15):
                 return station.id
         #No DCFC available
         return None

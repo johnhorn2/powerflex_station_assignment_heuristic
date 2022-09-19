@@ -79,7 +79,7 @@ class AssetDepot(MsgBroker):
             # if not driving log the SOC
             self.vehicle_status_snapshot[vehicle.id].append(vehicle.status)
 
-    def capture_departure_snapshot(self, reservation_id, vehicle_id, on_time_departure, scheduled_departure_datetime, state_of_charge):
+    def capture_departure_snapshot(self, reservation_id, vehicle_id, scheduled_departure_datetime, state_of_charge):
 
         # initialize dictionary
         if len(self.departure_snapshot) == 0:
@@ -87,16 +87,13 @@ class AssetDepot(MsgBroker):
             self.departure_snapshot['actual_departure_datetime'] = []
             self.departure_snapshot['reservation_id'] = []
             self.departure_snapshot['vehicle_id'] = []
-            self.departure_snapshot['on_time_departure'] = []
             self.departure_snapshot['state_of_charge'] = []
 
         # add vehicle soc
-        # self.vehicle_snapshot['datetime'].append(self.current_datetime)
         self.departure_snapshot['scheduled_departure_datetime'].append(scheduled_departure_datetime)
         self.departure_snapshot['actual_departure_datetime'].append(self.current_datetime)
         self.departure_snapshot['reservation_id'].append(reservation_id)
         self.departure_snapshot['vehicle_id'].append(vehicle_id)
-        self.departure_snapshot['on_time_departure'].append(on_time_departure)
         self.departure_snapshot['state_of_charge'].append(state_of_charge)
 
     def charge_vehicles(self):
@@ -127,12 +124,17 @@ class AssetDepot(MsgBroker):
         """
 
         departures = []
+        veh = []
         for reservation in self.reservations.values():
             if reservation.assigned_vehicle_id != None and reservation.status != 'complete':
                 if (self.current_datetime >= reservation.departure_timestamp_utc) and \
                 (self.vehicles[reservation.assigned_vehicle_id].state_of_charge >= 0.8) and \
                 (self.vehicles[reservation.assigned_vehicle_id].status != 'driving'):
                     departures.append(reservation)
+                    veh.append(reservation.assigned_vehicle_id)
+
+        if len(list(set(veh))) != len(veh):
+            print('we have dupe assigned vehs')
 
 
         for reservation in departures:
@@ -147,7 +149,7 @@ class AssetDepot(MsgBroker):
 
                 # need to unplug otherwise state gets overwritten as 'finished charging' instead of 'driving'
                 target_vehicle_id = reservation.assigned_vehicle_id
-                self.fleet_manager.unplug(target_vehicle_id)
+                self.fleet_manager.unplug(target_vehicle_id, self.current_datetime)
                 self.vehicles[reservation.assigned_vehicle_id].status = 'driving'
                 self.vehicles[reservation.assigned_vehicle_id].active_reservation_id = reservation.id
                 self.reservations[reservation.id].status = 'active'
@@ -161,7 +163,6 @@ class AssetDepot(MsgBroker):
                 self.capture_departure_snapshot(
                     reservation_id=reservation.id,
                     vehicle_id=target_vehicle_id,
-                    on_time_departure=True,
                     scheduled_departure_datetime=reservation.departure_timestamp_utc,
                     state_of_charge=self.vehicles[reservation.assigned_vehicle_id].state_of_charge
                 )
@@ -175,7 +176,6 @@ class AssetDepot(MsgBroker):
                 self.capture_departure_snapshot(
                     reservation_id=reservation.id,
                     vehicle_id=reservation.assigned_vehicle_id,
-                    on_time_departure=False,
                     scheduled_departure_datetime=reservation.departure_timestamp_utc,
                     state_of_charge=soc_at_departure
                 )
@@ -186,7 +186,7 @@ class AssetDepot(MsgBroker):
         self.subscribe_to_queue('move_charge', 'vehicle', 'move_charge')
 
         # if any vehicles are 80% or fully charged free up their stations
-        self.fleet_manager.free_up_ready_vehicles()
+        self.fleet_manager.free_up_ready_vehicles(self.current_datetime)
 
         # the heuristic has assigned a veh id to the reservation
         # we overwrite the current reservation with that assigned res
