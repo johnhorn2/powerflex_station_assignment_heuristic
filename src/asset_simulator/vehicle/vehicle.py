@@ -47,7 +47,7 @@ class Vehicle(BaseModel):
             current_kwh = self.state_of_charge * self.energy_capacity_kwh
             next_kwh = max(5, current_kwh - energy_consumed)
             self.state_of_charge = next_kwh / self.energy_capacity_kwh
-            self.add_log(datetime)
+            # self.add_log(datetime)
 
 
     def charge(self, seconds, power_kw, datetime):
@@ -59,7 +59,7 @@ class Vehicle(BaseModel):
         new_energy_kwh = min(self.energy_capacity_kwh, current_energy_kwh + charged_kwh)
         self.state_of_charge = new_energy_kwh / self.energy_capacity_kwh
         self.update_status()
-        self.add_log(datetime)
+        # self.add_log(datetime)
 
     def is_plugged_in(self):
         return isinstance(self.connected_station_id, int)
@@ -92,7 +92,7 @@ class Vehicle(BaseModel):
 
     def park(self, datetime):
         self.status = 'parked'
-        self.add_log(datetime)
+        # self.add_log(datetime)
 
     def get_reservation_id(self):
         for reservation in self.depot.reservations.values():

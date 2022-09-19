@@ -1,5 +1,5 @@
 {
- "horizon_length_hours": 120,
+ "horizon_length_hours": 192,
  "interval_seconds": 900,
 
   "mean_reservation_duration_hours":  48,
@@ -7,12 +7,12 @@
 
   "mean_walk_in_hour_of_day": 10,
   "stdev_walk_in_hours": 2,
-  "mean_walk_ins_per_day": 3,
+  "mean_walk_ins_per_day": 0,
   "stdev_walk_ins_per_day": 1,
 
   "mean_vehicle_departure_hour_of_day": 10,
   "stdev_vehicle_departure_hours": 2,
-  "mean_reservations_per_day": 40,
+  "mean_reservations_per_day": 60,
   "stdev_reservations_per_day": 5,
 
   "reservation_types": {
