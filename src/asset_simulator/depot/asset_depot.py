@@ -133,8 +133,8 @@ class AssetDepot(MsgBroker):
                     departures.append(reservation)
                     veh.append(reservation.assigned_vehicle_id)
 
-        if len(list(set(veh))) != len(veh):
-            print('we have dupe assigned vehs')
+        # if len(list(set(veh))) != len(veh):
+        #     print('we have dupe assigned vehs')
 
 
         for reservation in departures:
@@ -144,7 +144,7 @@ class AssetDepot(MsgBroker):
                 if self.vehicles[reservation.assigned_vehicle_id].status == 'driving':
                     # todo: fix the reservation generator
                     # the departure arrival window cannot overlap an existing departure arrival window for another reservation for an existing vehicle
-                    print('we have a reservation open for a vehicle already out driving on another reservation, fix reservation generator to only look at available vehicles')
+                    # print('we have a reservation open for a vehicle already out driving on another reservation, fix reservation generator to only look at available vehicles')
                     break
 
                 # need to unplug otherwise state gets overwritten as 'finished charging' instead of 'driving'
@@ -153,11 +153,6 @@ class AssetDepot(MsgBroker):
                 self.vehicles[reservation.assigned_vehicle_id].status = 'driving'
                 self.vehicles[reservation.assigned_vehicle_id].active_reservation_id = reservation.id
                 self.reservations[reservation.id].status = 'active'
-
-                print('veh:' + str(reservation.assigned_vehicle_id) + ' ' + str(self.current_datetime) + ' ' + str(reservation.id) + ' ' + str(reservation.departure_timestamp_utc))
-
-
-
 
                 # log the succesful departure for plotting later
                 self.capture_departure_snapshot(
