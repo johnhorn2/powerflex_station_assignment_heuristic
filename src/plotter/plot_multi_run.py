@@ -6,86 +6,57 @@ import plotly.graph_objects as go
 
 Result = namedtuple('Result', ('vehicle_cnt', 'station_cnt', 'random_sort'))
 
-with open('data_from_prior_runs/old/14day_3runs/heuristic_result.pickle', 'rb') as handle:
+with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/heuristic_result.pickle', 'rb') as handle:
+# with open('data_from_prior_runs/old/14day_3runs/heuristic_result.pickle', 'rb') as handle:
     heuristic_raw_results = pickle.load(handle)
 
-with open('data_from_prior_runs/old/14day_3runs/bau_result.pickle', 'rb') as handle:
+with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/bau_result.pickle', 'rb') as handle:
+# with open('data_from_prior_runs/old/14day_3runs/bau_result.pickle', 'rb') as handle:
     bau_raw_results = pickle.load(handle)
 
-for keys in heuristic_raw_results.keys():
-    x = keys._fields[0]
-    y = keys._fields[1]
 
-# process the output for 3d plotting
-heuristic = {}
-heuristic[x] = []
-heuristic[y] = []
-heuristic['pct_hour_late'] = []
+heuristic_flat_dict = {}
 
-bau = {}
-bau[x] = []
-bau[y] = []
-bau['pct_hour_late'] = []
-
-
-# need to find the average of all the entries in the values and assign to a list
 for keys, values in heuristic_raw_results.items():
-    heuristic[x].append(getattr(keys,x))
-    heuristic[y].append(getattr(keys,y))
-    flat_list = [item for sublist in values for item in sublist]
+    heuristic_flat_dict[keys] =  [item for sublist in values for item in sublist]
 
-    list_of_1_hour_tardy = [dept for dept in flat_list if dept >= 60]
-    pct_tardy = 100.0*len(list_of_1_hour_tardy) / len(flat_list)
-    heuristic['pct_hour_late'].append(pct_tardy)
-
-    # heuristic['pct_hour_late'].append(np.max(flat_list))
-
-for keys, values in bau_raw_results.items():
-    bau[x].append(getattr(keys,x))
-    bau[y].append(getattr(keys,y))
-    flat_list = [item for sublist in values for item in sublist]
-
-    list_of_1_hour_tardy = [dept for dept in flat_list if dept >= 60]
-    pct_tardy = 100.0*len(list_of_1_hour_tardy) / len(flat_list)
-    bau['pct_hour_late'].append(pct_tardy)
-    # bau['pct_hour_late'].append(np.max(flat_list))
-
-# L2_STATION_MIN = 1
-# L2_STATION_MAX = 15
-# L2_STEPS = 1
-# L2_STATIONS = np.arange(L2_STATION_MIN, L2_STATION_MAX, L2_STEPS)
-
-# VEH_MIN = 5
-# VEH_MAX = 30
-# VEH_STEPS = 5
-# VEHICLES = np.linspace(VEH_MIN, VEH_MAX, VEH_STEPS, dtype=int)
-
-L2_STATION_MIN = 1
-L2_STATION_MAX = 10
-L2_STEPS = 1
-# L2_STATIONS = np.linspace(L2_STATION_MIN, L2_STATION_MAX, L2_STEPS, dtype=int)
-L2_STATIONS = np.arange(L2_STATION_MIN, L2_STATION_MAX, L2_STEPS)
-
-VEH_MIN = 5
-VEH_MAX = 100
-VEH_STEPS = 5
-VEHICLES = np.linspace(VEH_MIN, VEH_MAX, VEH_STEPS, dtype=int)
+heuristic_kpi_dict = {}
+for keys, values in heuristic_flat_dict.items():
+    list_of_1_hour_tardy = [dept for dept in values if dept >= 60]
+    pct_tardy = 100.0*len(list_of_1_hour_tardy) / len(values)
+    heuristic_kpi_dict[keys] = pct_tardy
 
 
+ev_cnt_ordered_list = []
+evse_cnt_ordered_list = []
+for keys in heuristic_kpi_dict.keys():
+    ev_cnt_ordered_list.append(keys.vehicle_cnt)
+    evse_cnt_ordered_list.append(keys.station_cnt)
 
+ev_cnt_ordered_list = sorted(list(set(ev_cnt_ordered_list)))
+evse_cnt_ordered_list = sorted(list(set(evse_cnt_ordered_list)))
 
-# new_shape = (len(L2_STATIONS), len(VEHICLES))
-new_shape = ( len(VEHICLES), len(L2_STATIONS))
-heuristic_result = np.reshape(heuristic['pct_hour_late'], newshape=(new_shape))
-bau_result = np.reshape(bau['pct_hour_late'], newshape=new_shape)
+# assume evse_cnt is x and ev_cnt is y, z will be the KPI
+# so shape would be len(evse_cnt_ordered_list) x len(ev_cnt_ordered_list)
+evse_dim = len(evse_cnt_ordered_list)
+ev_dim = len(ev_cnt_ordered_list)
+new_shape = (evse_dim, ev_dim)
 
+z = np.ones(new_shape)
 
-# fig = go.Figure(data=[go.Surface(z=heuristic_result, x=L2_STATIONS, y=VEHICLES)])
+for evse_idx in range(0,evse_dim):
+    for ev_idx in range(0, ev_dim):
+        evse_key = evse_cnt_ordered_list[evse_idx]
+        ev_key = ev_cnt_ordered_list[ev_idx]
+        key = Result(vehicle_cnt=ev_key, station_cnt=evse_key, random_sort=False)
+        z[evse_idx,ev_idx]= heuristic_kpi_dict[key]
+
+x = evse_cnt_ordered_list
+y = ev_cnt_ordered_list
+
 fig = go.Figure(data=[
 
-    go.Surface(z=bau_result, x=L2_STATIONS, y=VEHICLES, opacity=0.3),
-    go.Surface(z=heuristic_result, x=L2_STATIONS, y=VEHICLES, opacity=0.3)],
-
+    go.Surface(z=z, x=x, y=y, opacity=1.0)],
 
 )
 fig.update_layout(title='Percent Hour Late',autosize=True,
