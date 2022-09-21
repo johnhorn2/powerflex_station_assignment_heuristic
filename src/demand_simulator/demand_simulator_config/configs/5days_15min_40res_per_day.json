@@ -1,9 +1,9 @@
 {
- "horizon_length_hours": 192,
+ "horizon_length_hours": 336,
  "interval_seconds": 900,
 
-  "mean_reservation_duration_hours":  48,
-  "stdev_reservation_hours": 24,
+  "mean_reservation_duration_hours":  24,
+  "stdev_reservation_hours": 2,
 
   "mean_walk_in_hour_of_day": 10,
   "stdev_walk_in_hours": 2,

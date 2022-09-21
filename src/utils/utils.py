@@ -40,7 +40,8 @@ class RuntimeEnvironment(BaseModel):
         df_soc = pd.DataFrame.from_dict(self.asset_simulator.vehicle_soc_snapshot)
         df_status = pd.DataFrame.from_dict(self.asset_simulator.vehicle_status_snapshot)
         df_actual_departures = pd.DataFrame.from_dict(self.asset_simulator.departure_snapshot)
-        df_actual_departures['departure_delta_minutes'] = (df_actual_departures['actual_departure_datetime'] - df_actual_departures['scheduled_departure_datetime'])
+        df_actual_departures['departure_delta_minutes'] = df_actual_departures['actual_departure_datetime'] - df_actual_departures['scheduled_departure_datetime']
+        df_actual_departures['departure_delta_minutes'] = pd.to_timedelta(df_actual_departures['departure_delta_minutes'])/pd.Timedelta('60s')
 
         if plot_output:
             plot = Plotter()
@@ -51,8 +52,10 @@ class RuntimeEnvironment(BaseModel):
                 self.asset_simulator.move_charge_snapshot,
                 self.asset_simulator.fleet_manager.station_fleet
             )
-            return (soc_chart, None)
+            # departure_delta_minutes = (pd.to_timedelta(df_actual_departures['departure_delta_minutes'])/pd.Timedelta('60s')).tolist()
+            # return (soc_chart, departure_delta_minutes)
+            return (soc_chart, df_actual_departures)
 
         if plot_output == False:
-            departure_delta_minutes = (pd.to_timedelta(df_actual_departures['departure_delta_minutes'])/pd.Timedelta('60s')).tolist()
+            departure_delta_minutes = df_actual_departures['departure_delta_minutes'].tolist()
             return departure_delta_minutes

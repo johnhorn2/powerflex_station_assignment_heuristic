@@ -18,16 +18,16 @@ from src.plotter.plotter import Plotter
 
 from src.single_run import single_run
 
-N_REPEATS = 30
+N_REPEATS = 3
 
 L2_STATION_MIN = 1
-L2_STATION_MAX = 15
+L2_STATION_MAX = 10
 L2_STEPS = 1
 # L2_STATIONS = np.linspace(L2_STATION_MIN, L2_STATION_MAX, L2_STEPS, dtype=int)
 L2_STATIONS = np.arange(L2_STATION_MIN, L2_STATION_MAX, L2_STEPS)
 
 VEH_MIN = 5
-VEH_MAX = 30
+VEH_MAX = 100
 VEH_STEPS = 5
 VEHICLES = np.linspace(VEH_MIN, VEH_MAX, VEH_STEPS, dtype=int)
 
@@ -90,8 +90,8 @@ for result_dict in output_list:
             heur_result_dict[key] = []
             heur_result_dict[key].append(result_dict['departure_deltas'])
 
-with open('plotter/data_from_prior_runs/heuristic_result.pickle', 'wb') as handle:
+with open('plotter/data_from_prior_runs/old/14day_3runs/heuristic_result.pickle', 'wb') as handle:
     pickle.dump(heur_result_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-with open('plotter/data_from_prior_runs/bau_result.pickle', 'wb') as handle:
+with open('plotter/data_from_prior_runs/old/14day_3runs/bau_result.pickle', 'wb') as handle:
     pickle.dump(bau_result_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
