@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict
 
 from pydantic import BaseModel
 
@@ -12,10 +12,45 @@ class Vehicle(BaseModel):
     energy_capacity_kwh: int
     status: str
     updated_at: Optional[datetime]
+    active_reservation_id: Optional[str]
+    log: Optional[Dict] = {}
     # ['parked' | 'charging' | 'finished_charging', 'driving]
 
 
-    def charge(self, seconds, power_kw):
+    def add_log(self, datetime):
+        try:
+            self.log['id'].append(self.id)
+            self.log['datetime'].append(datetime)
+            self.log['soc'].append(self.state_of_charge)
+            self.log['status'].append(self.status)
+            self.log['connected_station_id'].append(self.connected_station_id)
+            self.log['is_plugged_in'].append(self.is_plugged_in())
+            self.log['active_reservation_id'].append(self.active_reservation_id)
+            self.log['type'].append(self.type)
+        except KeyError:
+            self.log['id'] = []
+            self.log['datetime'] = []
+            self.log['soc'] = []
+            self.log['status'] = []
+            self.log['connected_station_id'] = []
+            self.log['is_plugged_in'] = []
+            self.log['active_reservation_id'] = []
+            self.log['type'] = []
+
+    def drive(self, n_seconds, datetime):
+        # decrease the state_of_charge by interval_seconds * efficiency
+        if self.status == 'driving':
+           # assume an average miles driven of 100 miles per 48 hours
+            miles_driven_per_interval = n_seconds * (100/(48*3600)) # miles per sec
+            # 0.346 kwh / mile
+            energy_consumed = miles_driven_per_interval * 0.346
+            current_kwh = self.state_of_charge * self.energy_capacity_kwh
+            next_kwh = max(5, current_kwh - energy_consumed)
+            self.state_of_charge = next_kwh / self.energy_capacity_kwh
+            # self.add_log(datetime)
+
+
+    def charge(self, seconds, power_kw, datetime):
         hours = seconds/3600
         charged_kwh = power_kw * hours
         current_energy_kwh = self.state_of_charge * self.energy_capacity_kwh
@@ -24,6 +59,7 @@ class Vehicle(BaseModel):
         new_energy_kwh = min(self.energy_capacity_kwh, current_energy_kwh + charged_kwh)
         self.state_of_charge = new_energy_kwh / self.energy_capacity_kwh
         self.update_status()
+        # self.add_log(datetime)
 
     def is_plugged_in(self):
         return isinstance(self.connected_station_id, int)
@@ -54,8 +90,9 @@ class Vehicle(BaseModel):
         self.connected_station_id = None
         self.update_status()
 
-    def park(self):
-        self.depot.parking_lot.vehicles.append(self.id)
+    def park(self, datetime):
+        self.status = 'parked'
+        # self.add_log(datetime)
 
     def get_reservation_id(self):
         for reservation in self.depot.reservations.values():

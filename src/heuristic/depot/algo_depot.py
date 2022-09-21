@@ -1,6 +1,8 @@
 from collections import namedtuple
+from datetime import timedelta
 import copy
 from operator import attrgetter
+import random
 from typing import Optional, Dict, List
 
 from src.asset_simulator.depot.asset_depot import AssetDepot
@@ -23,19 +25,19 @@ class AlgoDepot(AssetDepot):
         # to re-assign assigned reservations as we get new information on vehicles and reservations
         self.subscribe_to_queue('reservations','reservation', 'reservations')
 
-    def run_interval(self):
+    def run_interval(self, random_sort=False):
 
         # collect any instructions from the queue
         self.poll_queues()
+
+        # filter out vehicles driving
+        self.fleet_manager.vehicle_fleet.vehicles = self.fleet_manager.vehicle_fleet.get_available_vehicles_at_depot()
 
         # scan QR events - adds newly available vehicles
         self.get_qr_scan_events()
 
         # calculate our walk in pool
         self.allocate_vehicles_to_walk_in_pool()
-
-        # filter out vehicles driving
-        self.fleet_manager.vehicle_fleet.vehicles = self.fleet_manager.vehicle_fleet.get_available_vehicles_at_depot()
 
         # filter out vehicles driving and expired reservations
         self.reservations = self.filter_out_expired_reservations(self.reservations)
@@ -62,11 +64,12 @@ class AlgoDepot(AssetDepot):
 
 
         # calculate heuristics
-        self.assign_vehicles_reservations_by_type_and_highest_soc()
+        self.assign_vehicles_reservations_by_type_and_highest_soc(random_sort=random_sort)
 
         # assign charging station/vehicle pairs
         self.assign_charging_stations_to_reservations()
-        # self.assign_charging_station_to_walk_ins()
+        self.assign_charging_station_to_walk_in_pool()
+        self.assign_charging_stations_to_remaining_vehicles()
 
         # push status of all vehicles/stations to the queue at end of interval to update the heuristic
 
@@ -98,12 +101,9 @@ class AlgoDepot(AssetDepot):
                                 if reservation.departure_timestamp_utc > self.current_datetime}
         return current_reservations
 
-
     # depot related functions
 
-
-
-    def assign_vehicles_reservations_by_type_and_highest_soc(self):
+    def assign_vehicles_reservations_by_type_and_highest_soc(self, random_sort=False):
         # create a list of all possible vehicle types
         vehicle_types = list(set([vehicle.type for vehicle in self.vehicles.values()]))
 
@@ -111,6 +111,11 @@ class AlgoDepot(AssetDepot):
 
             vehicles_soc_sorted = self.fleet_manager.vehicle_fleet.sort_vehicles_highest_soc_first_by_type(self.vehicles.values(), vehicle_type)
             reservations_departure_sorted = self.sort_departures_earliest_first(vehicle_type)
+
+            if random_sort:
+                # shuffle in place to mimic random assignment of vehicle to reservation
+                random.shuffle(vehicles_soc_sorted)
+                random.shuffle(reservations_departure_sorted)
 
             # remove any vehicles that are dedicated to the walk in pool
             # vehicles_soc_sorted = [vehicle for vehicle in vehicles_soc_sorted if not self.fleet_manager.vehicle_fleet.vehicle_in_walk_in_pool(vehicle.id)]
@@ -159,8 +164,6 @@ class AlgoDepot(AssetDepot):
                             else:
                                 # only send reervations with no vehicles if there was an update made
                                 pass
-
-
 
     def reservation_is_new(self, reservation):
         try:
@@ -217,7 +220,8 @@ class AlgoDepot(AssetDepot):
     def get_available_l2_station(self):
         # return first L2 station available
         for station in self.stations.values():
-            if station.is_available() and station.is_l2() and not self.is_station_reserved(station.id):
+            # enforce a 5 min wait period after an evse has been unplugged to simulate unplugging and moving prior vehicle from station, otherwise we get teleporting station/vehicle pairs
+            if station.is_available() and station.is_l2() and not self.is_station_reserved(station.id) and self.current_datetime > station.last_unplugged + timedelta(minutes=15):
                 return station.id
         #No L2 available
         return None
@@ -232,7 +236,8 @@ class AlgoDepot(AssetDepot):
     def get_available_dcfc_station(self):
         # return first DCFC station available
         for station in self.stations.values():
-            if station.is_available() and station.is_dcfc() and not self.is_station_reserved(station.id):
+            # enforce a 5 min wait period after an evse has been unplugged to simulate unplugging and moving prior vehicle from station, otherwise we get teleporting station/vehicle pairs
+            if station.is_available() and station.is_dcfc() and not self.is_station_reserved(station.id) and self.current_datetime > station.last_unplugged + timedelta(minutes=15):
                 return station.id
         #No DCFC available
         return None
@@ -278,7 +283,8 @@ class AlgoDepot(AssetDepot):
         for vehicle in self.qr_scans.values():
             # update our out driving vehicles with arrivals that have been scanned to 'parked'
             # otherwise if status set to 'driving' it will be excluded from reservation assignments
-            vehicle.status = 'parked'
+            # vehicle.status = 'parked'
+            vehicle.park(self.current_datetime)
             self.vehicles[vehicle.id] = vehicle
 
         # wipe out the internal qr events after moving these vehicles from 'driving' to 'parked'
@@ -311,9 +317,10 @@ class AlgoDepot(AssetDepot):
     def assign_charging_stations_to_reservations(self):
 
         # create ordered list of assigned reservations by departure date ascending
+        # walk-ins would naturally get prioritized here since they have the soonest departures
         sorted_reservation_assignments = sorted(self.reservation_assignments.values(), key=lambda x: x.departure_timestamp_utc)
 
-        # cycle through starting with soonest departure and assign a station per reservation and status charging
+        # cycle through starting with earliest departure and assign a station per reservation and status charging
         for reservation in sorted_reservation_assignments:
 
             # no need to assign the charging station since no vehicle being assigned
@@ -417,32 +424,62 @@ class AlgoDepot(AssetDepot):
                 for vehicle in target_vehicles:
                     self.fleet_manager.vehicle_fleet.allocate_to_walk_in_pool(vehicle)
 
-    def assign_charging_station_to_walk_ins(self):
+    def assign_charging_station_to_walk_in_pool(self):
 
         # Are there stations available?
         if (self.l2_is_available() or self.dcfc_is_available()):
 
-            for vehicle in self.fleet_manager.vehicle_fleet.walk_in_pool.values():
+            vehicles = self.fleet_manager.vehicle_fleet.walk_in_pool.values()
 
-                if vehicle.is_below_minimum_soc():
+            # sort our vehicles by highest SOC first so we have vehicles ready soonest
+            ordered_vehicle = self.fleet_manager.vehicle_fleet.sort_vehicles_highest_soc_first_by_type(
+                vehicles=vehicles,
+                vehicle_type='any'
+            )
+
+            for vehicle in ordered_vehicle:
+
+                # soc < 80, isn't currently charging, and don't have a charge command in the queue for said vehicle
+                if vehicle.is_below_minimum_soc() and vehicle.status != 'charging' and vehicle.id not in self.move_charge.keys():
 
                     if self.l2_is_available():
-                        available_l2_station = self.prefer_l2()
-                        vehicle.connected_station_id = available_l2_station
+                        available_l2_station_id = self.prefer_l2()
+                        vehicle.connected_station_id = available_l2_station_id
                         self.move_charge[vehicle.id] = vehicle
                         # need to locally simulate the plugin so we know the station and vehicle will be plugged in
-                        self.fleet_manager.plugin(vehicle.id, available_l2_station.id)
+                        self.fleet_manager.plugin(vehicle.id, available_l2_station_id)
 
                     elif self.dcfc_is_available():
-                        available_dcfc_station = self.prefer_dcfc()
-                        vehicle.connected_station_id = available_dcfc_station
+                        available_dcfc_station_id = self.prefer_dcfc()
+                        vehicle.connected_station_id = available_dcfc_station_id
                         self.move_charge[vehicle.id] = vehicle
                         # need to locally simulate the plugin so we know the station and vehicle will be plugged in
-                        self.fleet_manager.plugin(vehicle.id, available_dcfc_station.id)
+                        self.fleet_manager.plugin(vehicle.id, available_dcfc_station_id)
 
-    # def assign_charging_stations_to_remaining_vehicles(self):
+    def assign_charging_stations_to_remaining_vehicles(self):
 
-    #     Do we have any available charging stations
-    #     if self.l2_is_available() or self.dcfc_is_available():
-    #         pass
+        # Do we have any available charging stations
+        if self.l2_is_available() or self.dcfc_is_available():
+            sorted_vehicles = self.fleet_manager.vehicle_fleet.sort_vehicles_highest_soc_first_by_type(
+                vehicles=self.vehicles.values(),
+                vehicle_type='any'
+            )
+            for vehicle in sorted_vehicles:
+
+                # soc < 80, isn't currently charging, and don't have a charge command in the queue for said vehicle
+                if vehicle.is_below_minimum_soc() and vehicle.status != 'charging' and vehicle.id not in self.move_charge.keys():
+
+                    if self.l2_is_available():
+                        available_l2_station_id = self.prefer_l2()
+                        vehicle.connected_station_id = available_l2_station_id
+                        self.move_charge[vehicle.id] = vehicle
+                        # need to locally simulate the plugin so we know the station and vehicle will be plugged in
+                        self.fleet_manager.plugin(vehicle.id, available_l2_station_id)
+
+                    elif self.dcfc_is_available():
+                        available_dcfc_station_id = self.prefer_dcfc()
+                        vehicle.connected_station_id = available_dcfc_station_id
+                        self.move_charge[vehicle.id] = vehicle
+                        # need to locally simulate the plugin so we know the station and vehicle will be plugged in
+                        self.fleet_manager.plugin(vehicle.id, available_dcfc_station_id)
 

@@ -74,27 +74,103 @@ class DemandSimulator(MsgBroker):
 
         return len(events_in_current_interval)
 
-    def make_reservations(self, n_reservations, res_datetime, walk_in=False):
-        if n_reservations > 0:
-            # Currently assigning a vehicle type in the res based on the ratio in our fleet
-            # todo: Make reservations based on AVAILABLE vehicles
-            random_reservation_type_weights = [type_ratio for type_ratio in self.config.reservation_types.values()]
-            vehicle_types=random.choices(list(self.config.reservation_types.keys()), weights=random_reservation_type_weights, k=n_reservations)
-            for vehicle_type in vehicle_types:
-                id = str(uuid.uuid4())
-                res_dict = \
-                    {
-                        "id": id,
-                        "departure_timestamp_utc": res_datetime,
-                        "created_at_timestamp_utc": self.current_datetime,
-                        "vehicle_type": vehicle_type,
-                        "state_of_charge": 0.8,
-                        "walk_in": walk_in,
-                        "status": 'created'
-                    }
-                self.reservations[id] = Reservation(**res_dict)
+    def generate_arrival_time(self, departure):
+        hours_out_driving = np.random.normal(
+            loc=self.config.mean_reservation_duration_hours,
+            scale=self.config.stdev_reservation_hours
+        )
+
+        # need to apply a floor to hours driving as normal dist will give negatives
+        hours_out_driving = max(2, hours_out_driving)
+
+        hour_decimal = 1/(self.config.interval_seconds/3600)
+        rounded_hour = round(hours_out_driving*hour_decimal)/hour_decimal
+
+        arrival_datetime = departure + timedelta(hours=rounded_hour)
+        return arrival_datetime
+
+    # def make_reservations(self, n_reservations, res_datetime, walk_in=False):
+    #     if n_reservations > 0:
+    #         # Currently assigning a vehicle type in the res based on the ratio in our fleet
+    #         # todo: Make reservations based on AVAILABLE vehicles
+    #         random_reservation_type_weights = [type_ratio for type_ratio in self.config.reservation_types.values()]
+    #         vehicle_types=random.choices(list(self.config.reservation_types.keys()), weights=random_reservation_type_weights, k=n_reservations)
+    #         for vehicle_type in vehicle_types:
+    #             id = str(uuid.uuid4())
+    #             res_dict = \
+    #                 {
+    #                     "id": id,
+    #                     "departure_timestamp_utc": res_datetime,
+    #                     "created_at_timestamp_utc": self.current_datetime,
+    #                     "vehicle_type": vehicle_type,
+    #                     "state_of_charge": 0.8,
+    #                     "walk_in": walk_in,
+    #                     "status": 'created'
+    #                 }
+    #             self.reservations[id] = Reservation(**res_dict)
+    #     else:
+    #         pass
+
+    def make_reservations(self, n_res, departure, walk_in=False):
+        for reservation_idx in range(0, n_res):
+            arrival = self.generate_arrival_time(departure)
+            if self.is_vehicle_available(departure, arrival):
+                available_vehicles = self.get_available_vehicles(departure, arrival)
+                vehicle_id = random.randint(0, len(available_vehicles) - 1)
+                vehicle_type = available_vehicles[vehicle_id].type
+                self.send_reservation(departure, arrival, vehicle_type, walk_in)
+            else:
+                pass
+
+    def reservation_does_overlap(self, reservation, departure, arrival):
+        if departure > reservation.arrival_timestamp_utc:
+            return False
+        elif arrival < reservation.departure_timestamp_utc:
+            return False
+        elif reservation.departure_timestamp_utc < arrival < reservation.arrival_timestamp_utc:
+            return True
+        elif reservation.departure_timestamp_utc < departure < reservation.arrival_timestamp_utc:
+            return True
+
+    def get_available_vehicles(self, departure, arrival):
+        avail_vehicles = [veh.id for veh in self.vehicles.values()]
+        unavail_vehicles = []
+        for res in self.reservations.values():
+            if self.reservation_does_overlap(res, departure, arrival):
+                unavail_vehicles.append(res.assigned_vehicle_id)
+
+        # get a unique list of vehicles
+        avail_vehicles = set(avail_vehicles)
+        unavail_vehicles = set(unavail_vehicles)
+
+        # return available vehicles that do not intersect the unavailable vehicles list
+        avail_vehicles = list(avail_vehicles.difference(unavail_vehicles))
+        avail_vehicles = [self.vehicles[veh_id] for veh_id in avail_vehicles]
+        return avail_vehicles
+       
+    def is_vehicle_available(self, departure, arrival):
+        if len(self.get_available_vehicles(departure, arrival)) > 0:
+            return True
         else:
-            pass
+            return False
+
+    def send_reservation(self, departure, arrival, vehicle_type, walk_in):
+        id = str(uuid.uuid4())
+
+        res_dict = \
+            {
+                "id": id,
+                "departure_timestamp_utc": departure,
+                "arrival_timestamp_utc": arrival,
+                "created_at_timestamp_utc": self.current_datetime,
+                "vehicle_type": vehicle_type,
+                "state_of_charge": 0.8,
+                "walk_in": walk_in,
+                "status": 'created'
+            }
+        self.reservations[id] = Reservation(**res_dict)
+                
+    
 
     def generate_reservations_24_hours_ahead(self, current_datetime):
         # if init the sim then generate the reservations 24 hours ahead
@@ -129,7 +205,8 @@ class DemandSimulator(MsgBroker):
 
         if n_walk_ins > 0:
             # walk ins objects are just treated as reservations that are 15 minutes ahead and occur in real time
-            self.make_reservations(n_walk_ins, self.current_datetime + timedelta(minutes=15), walk_in=True)
+            # self.make_reservations(n_walk_ins, self.current_datetime + timedelta(minutes=15), walk_in=True)
+            pass
 
         # publish any random reservations or walkins created
         self.publish_to_queue('reservations', 'reservations')

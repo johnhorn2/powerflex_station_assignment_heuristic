@@ -102,9 +102,15 @@ class Plotter(BaseModel):
                         hover_values = [
                                     'created <br>' + str(res.created_at_timestamp_utc),
                                     'assigned <br>' + str(res.assigned_at_timestamp_utc),
-                                    'requested_departure <br>' + str(res.departure_timestamp_utc)
+                                    'requested_departure <br>' + str(res.departure_timestamp_utc),
+                                    'reservation id <br>' + str(res.id[0:5]),
                                     ]
-                        text_values = ['created', 'assigned', 'departure']
+                        text_values = [
+                            res.id[0:5] + ' created',
+                            res.id[0:5] + ' assigned',
+                            res.id[0:5] + ' departure',
+                            res.id[0:5] + ' arrival'
+                        ]
                     elif res.walk_in == True:
                         hover_values = [
                             'walk-in <br>' + str(res.created_at_timestamp_utc),
@@ -122,9 +128,10 @@ class Plotter(BaseModel):
                             x=[
                                 res.created_at_timestamp_utc,
                                 res.assigned_at_timestamp_utc,
-                                res.departure_timestamp_utc
+                                res.departure_timestamp_utc,
+                                res.arrival_timestamp_utc,
                                ],
-                            y=np.ones(shape=3),
+                            y=[1, 0.8, 0.6, 0.4], #np.ones(shape=4),
                             hovertemplate=hover_values,
                             text=text_values,
                             textposition=['top left', 'middle center', 'bottom right'],

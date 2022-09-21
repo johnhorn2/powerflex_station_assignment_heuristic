@@ -1,7 +1,7 @@
 {
  "interval_seconds": 900,
  "minimum_ready_vehicle_pool": {
-   "sedan": 3,
+   "sedan": 10,
    "suv": 1,
    "crossover": 1
  },
@@ -10,10 +10,8 @@
    "suv":  {"n": 10, "kwh_capacity": 60},
    "crossover": {"n": 20, "kwh_capacity": 50}
  },
- "n_l2_stations": 10,
- "n_dcfc_stations": 2,
+ "n_l2_stations": 1,
+ "n_dcfc_stations": 0,
  "l2_max_power_kw":7.2,
- "dcfc_max_power_kw":50,
- "mean_reservation_duration_hours": 48,
- "stdev_reservation_hours": 24
+ "dcfc_max_power_kw":50
 }
