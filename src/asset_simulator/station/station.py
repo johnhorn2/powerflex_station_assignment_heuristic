@@ -8,7 +8,7 @@ class Station(BaseModel):
     type: str
     connected_vehicle_id: int = None
     max_power_kw: float
-    last_unplugged: Optional[datetime]
+    last_unplugged: datetime
 
     def is_l2(self):
         return self.type == 'L2'

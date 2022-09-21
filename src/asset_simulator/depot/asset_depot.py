@@ -282,11 +282,25 @@ class AssetDepot(MsgBroker):
         station_id = -1
         for l2_station in range(0, config.n_l2_stations):
             station_id += 1
-            stations[station_id] = (Station(id=station_id, type='L2', max_power_kw=l2_max_power_kw))
+            stations[station_id] = (
+                Station(
+                    id=station_id,
+                    type='L2',
+                    max_power_kw=l2_max_power_kw,
+                    last_unplugged=datetime(year=2020, month=1, day=1)
+                )
+            )
 
         for dcfc_station in range(0, config.n_dcfc_stations):
             station_id += 1
-            stations[station_id] = (Station(id=station_id, type='DCFC', max_power_kw=dcfc_max_power_kw))
+            stations[station_id] = (
+                Station(
+                    id=station_id,
+                    type='DCFC',
+                    max_power_kw=dcfc_max_power_kw,
+                    last_unplugged=datetime(year=2020, month=1, day=1)
+                )
+            )
 
         # setup vehicles
         vehicles = {}
