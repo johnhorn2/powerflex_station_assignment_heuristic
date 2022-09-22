@@ -6,11 +6,15 @@ import plotly.graph_objects as go
 
 Result = namedtuple('Result', ('vehicle_cnt', 'station_cnt', 'random_sort'))
 
-with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/heuristic_result.pickle', 'rb') as handle:
+# with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/heuristic_result.pickle', 'rb') as handle:
+# with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_100pct/heuristic_result.pickle', 'rb') as handle:
+with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_80pct/heuristic_result.pickle', 'rb') as handle:
 # with open('data_from_prior_runs/old/14day_3runs/heuristic_result.pickle', 'rb') as handle:
     heuristic_raw_results = pickle.load(handle)
 
-with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/bau_result.pickle', 'rb') as handle:
+# with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/bau_result.pickle', 'rb') as handle:
+# with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_100pct/bau_result.pickle', 'rb') as handle:
+with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_80pct/bau_result.pickle', 'rb') as handle:
 # with open('data_from_prior_runs/old/14day_3runs/bau_result.pickle', 'rb') as handle:
     bau_raw_results = pickle.load(handle)
 
@@ -64,8 +68,8 @@ fig.update_layout(title='Percent Hour Late',autosize=True,
                   margin=dict(l=65, r=50, b=65, t=90),
                   )
 fig.update_layout(scene = dict(
-                    xaxis_title='# L2 Stations',
-                    yaxis_title='# vehicles',
+                    xaxis_title='# EVSE',
+                    yaxis_title='# EV',
                     zaxis_title='Pct Hour Late'),
                     width=700,
                     margin=dict(r=20, b=10, l=10, t=10))

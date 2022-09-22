@@ -45,11 +45,15 @@ class FleetManager(BaseModel):
 
     def free_up_ready_vehicles(self, current_datetime):
         # if it is business hours between 9am and 5pm and vehicles is finished charging
-        if current_datetime.hour >= 9 and current_datetime.hour <= 5:
+        # if current_datetime.hour >= 9 and current_datetime.hour <= 17:
+
+        # all hours of the day
+        if 1 == 1:
 
             # if a vehicle is finished charging or 80% done then park it instead of charge it
             for vehicle in self.vehicles.values():
-                if vehicle.state_of_charge == 1.0 and vehicle.status in ('charging', 'finished_charging'):
+                # if vehicle.state_of_charge == 1.0 and vehicle.status in ('charging', 'finished_charging'):
+                if vehicle.state_of_charge >= 0.8 and vehicle.status in ('charging', 'finished_charging'):
                     self.unplug(vehicle.id, current_datetime)
                     vehicle.status = 'parked'
 

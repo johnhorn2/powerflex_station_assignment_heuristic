@@ -12,6 +12,12 @@ In a terminal from the parent repo folder
 docker build --rm -t streamlit .
 docker run -v $(pwd):/home/code -p 8501:8501 streamlit 
 ```
+
+to execute from the command line a series of simulations:
+```
+python3 -m src.utils.multi_run
+```
+
 click on the url in the terminal
 
 

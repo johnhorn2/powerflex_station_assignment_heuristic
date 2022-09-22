@@ -1,43 +1,28 @@
 from collections import namedtuple
+import click
 import pickle
-import json
-import os
 
 import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
-from pydantic import BaseModel
 
-from src.asset_simulator.depot_config.depot_config import AssetDepotConfig
-from src.asset_simulator.depot.asset_depot import AssetDepot
-from src.demand_simulator.demand_simulator.demand_simulator import DemandSimulator
-from src.demand_simulator.demand_simulator_config.demand_simulator_config import DemandSimulatorConfig
-from src.heuristic.depot.algo_depot import AlgoDepot
-from src.mock_queue.mock_queue import MockQueue
-from src.plotter.plotter import Plotter
+from src.utils.single_run import single_run
 
-from src.single_run import single_run
 
 N_REPEATS = 3
 
 L2_STATION_MIN = 1
-L2_STATION_MAX = 40
-L2_STEPS = 2
-# L2_STATIONS = np.linspace(L2_STATION_MIN, L2_STATION_MAX, L2_STEPS, dtype=int)
+L2_STATION_MAX = 10
+L2_STEPS = 1
 L2_STATIONS = np.arange(L2_STATION_MIN, L2_STATION_MAX, L2_STEPS)
 
 VEH_MIN = 5
-VEH_MAX = 200
+VEH_MAX = 100
 VEH_STEPS = 10
-VEHICLES = np.linspace(VEH_MIN, VEH_MAX, VEH_STEPS, dtype=int)
+VEHICLES = np.arange(VEH_MIN, VEH_MAX, VEH_STEPS)
 
 DCFC_STATION_MIN = 0
 DCFC_STEPS = 1
 DCFC_STATION_MAX = 6
-# DCFC_STATIONS = np.linspace(DCFC_STATION_MIN, DCFC_STATION_MAX, DCFC_STEPS, dtype=int)
 DCFC_STATIONS = np.arange(DCFC_STATION_MIN, DCFC_STATION_MAX, DCFC_STEPS)
-
-# VEHS = np.linspace(VEH_MIN, VEH_MAX, VEH_STEPS, dtype=int)
 
 random_sort_list=[True,False]
 
@@ -56,7 +41,8 @@ for repeat in range(0,N_REPEATS):
                         crossover_count=0,
                         l2_station_count=station_count,
                         random_sort=random_sort,
-                        dcfc_station_count=0
+                        dcfc_station_count=0,
+                        asset_config='hiker_9_to_5.json'
                     )
                 )
 
