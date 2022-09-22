@@ -2,20 +2,21 @@ from collections import namedtuple
 import pickle
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 
 Result = namedtuple('Result', ('vehicle_cnt', 'station_cnt', 'random_sort'))
 
 # with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/heuristic_result.pickle', 'rb') as handle:
 # with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_100pct/heuristic_result.pickle', 'rb') as handle:
-with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_80pct/heuristic_result.pickle', 'rb') as handle:
-# with open('data_from_prior_runs/old/14day_3runs/heuristic_result.pickle', 'rb') as handle:
+# with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_80pct/heuristic_result.pickle', 'rb') as handle:
+with open('data_from_prior_runs/old/heuristic_result.pickle', 'rb') as handle:
     heuristic_raw_results = pickle.load(handle)
 
 # with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/bau_result.pickle', 'rb') as handle:
 # with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_100pct/bau_result.pickle', 'rb') as handle:
-with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_80pct/bau_result.pickle', 'rb') as handle:
-# with open('data_from_prior_runs/old/14day_3runs/bau_result.pickle', 'rb') as handle:
+# with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_80pct/bau_result.pickle', 'rb') as handle:
+with open('data_from_prior_runs/old/bau_result.pickle', 'rb') as handle:
     bau_raw_results = pickle.load(handle)
 
 
@@ -80,10 +81,11 @@ x = sorted(evse_cnt_ordered_list, reverse=True)
 y = sorted(ev_cnt_ordered_list, reverse=True)
 
 fig = go.Figure(data=[
-
-    go.Surface(z=z, x=x, y=y, opacity=1.0),
-    # go.Surface(z=z_bau, x=x, y=y, opacity=0.2)],
-    ]
+    go.Surface(z=z, x=x, y=y, opacity=1.0,
+    hovertemplate = "EVSE cnt: %{x}" + "<br>EV cnt: %{y}" + "<br>%{z:.2f}% Late Departures"),
+    # go.Surface(z=z_bau, x=x, y=y, opacity=0.2,
+   # hovertemplate = "EVSE cnt: %{x}" + "<br>EV cnt: %{y}" + "<br>% Dept. Late:%{z}"),
+    ],
 
 )
 fig.update_layout(title='Percent Hour Late',autosize=True,

@@ -2,13 +2,13 @@
  "interval_seconds": 900,
  "minimum_ready_vehicle_pool": {
    "sedan": 10,
-   "suv": 1,
-   "crossover": 1
+   "suv": 0,
+   "crossover": 0
  },
  "vehicles": {
    "sedan": {"n": 10, "kwh_capacity": 40},
-   "suv":  {"n": 10, "kwh_capacity": 60},
-   "crossover": {"n": 20, "kwh_capacity": 50}
+   "suv":  {"n": 0, "kwh_capacity": 60},
+   "crossover": {"n": 0, "kwh_capacity": 50}
  },
   "hiker": {
     "hour_of_day_start": 9,
