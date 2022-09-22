@@ -10,7 +10,7 @@ from src.mock_queue.mock_queue import MockQueue
 
 from src.utils.utils import RuntimeEnvironment
 
-def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count, dcfc_station_count, random_sort):
+def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count, dcfc_station_count, random_sort, asset_config):
 
     # print('running with dcfc_count: ' + str(dcfc_station_count) + ' and l2_station_count: ' + str(station_count))
     print('running with veh_count: ' + str(sedan_count) + ' and l2_station_count: ' + str(l2_station_count))
@@ -28,7 +28,7 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
     )
 
     script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
-    demand_sim_config = 'demand_simulator/demand_simulator_config/configs/5days_15min_40res_per_day.json'
+    demand_sim_config = '../demand_simulator/demand_simulator_config/configs/5days_15min_40res_per_day.json'
     demand_sim_path = os.path.join(script_dir, demand_sim_config)
 
     # setup demand_simulator
@@ -41,7 +41,7 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
         demand_simulator = DemandSimulator(config=demand_simulator_config, queue=mock_queue)
 
         # setup asset_simulator
-        asset_sim_config = 'asset_simulator/depot_config/configs/150_vehicles_10_L2_2_DCFC.json'
+        asset_sim_config = '../asset_simulator/depot_config/configs/' + asset_config
         asset_sim_path = os.path.join(script_dir, asset_sim_config)
 
         with open(asset_sim_path) as f:

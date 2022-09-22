@@ -10,6 +10,10 @@
    "suv":  {"n": 10, "kwh_capacity": 60},
    "crossover": {"n": 20, "kwh_capacity": 50}
  },
+  "hiker": {
+    "hour_of_day_start": 9,
+    "hour_of_day_end": 17
+  },
  "n_l2_stations": 1,
  "n_dcfc_stations": 0,
  "l2_max_power_kw":7.2,
