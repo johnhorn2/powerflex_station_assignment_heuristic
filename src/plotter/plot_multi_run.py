@@ -7,16 +7,16 @@ import plotly.graph_objects as go
 
 Result = namedtuple('Result', ('vehicle_cnt', 'station_cnt', 'random_sort'))
 
-# with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/heuristic_result.pickle', 'rb') as handle:
+with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/heuristic_result.pickle', 'rb') as handle:
 # with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_100pct/heuristic_result.pickle', 'rb') as handle:
 # with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_80pct/heuristic_result.pickle', 'rb') as handle:
-with open('data_from_prior_runs/old/heuristic_result.pickle', 'rb') as handle:
+# with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/heuristic_result.pickle', 'rb') as handle:
     heuristic_raw_results = pickle.load(handle)
 
-# with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/bau_result.pickle', 'rb') as handle:
+with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/bau_result.pickle', 'rb') as handle:
 # with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_100pct/bau_result.pickle', 'rb') as handle:
 # with open('data_from_prior_runs/old/14day_3runs_all_hours_move_at_80pct/bau_result.pickle', 'rb') as handle:
-with open('data_from_prior_runs/old/bau_result.pickle', 'rb') as handle:
+# with open('data_from_prior_runs/old/14day_3runs_business_hours_move_at_100pct/bau_result.pickle', 'rb') as handle:
     bau_raw_results = pickle.load(handle)
 
 
