@@ -8,10 +8,26 @@ To best serve our fleet operators or "hikers" decide where to plug in vehicles o
 Inspiration: https://docs.streamlit.io/knowledge-base/tutorials/deploy/docker
 
 In a terminal from the parent repo folder
+
+First build the docker image
 ```
 docker build --rm -t streamlit .
-docker run -v $(pwd):/home/code -p 8501:8501 streamlit 
 ```
+
+If running an individual simulation for inspection
+```
+docker run -v $(pwd):/home/code -p 8501:8501 streamlit visualize_single_run.py
+```
+
+If running the site SLA tool
+```
+docker run -v $(pwd):/home/code -p 8501:8501 streamlit visualize_multi_run.py
+```
+
+
+
+
+
 
 to execute from the command line a series of simulations use the following command
 from the parent directory.
