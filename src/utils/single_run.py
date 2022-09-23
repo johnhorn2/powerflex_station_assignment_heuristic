@@ -87,7 +87,8 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
                 # 'dcfc_stations': dcfc_station_count,
                 'vehicles': sedan_count,
                 'l2_stations': l2_station_count,
-                'departure_deltas': results
+                'departure_deltas': results,
+                'n_dcfc': dcfc_station_count
             }
 
         print('simulation complete')
