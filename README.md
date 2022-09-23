@@ -13,9 +13,10 @@ docker build --rm -t streamlit .
 docker run -v $(pwd):/home/code -p 8501:8501 streamlit 
 ```
 
-to execute from the command line a series of simulations:
+to execute from the command line a series of simulations use the following command
+from the parent directory.
 ```
-python3 -m src.utils.multi_run
+python3 -m src.utils.multi_run_cmd_line --n_repeats=3 --l2_station_max=10 --l2_steps=1
 ```
 
 click on the url in the terminal
