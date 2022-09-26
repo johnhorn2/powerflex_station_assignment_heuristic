@@ -1,5 +1,6 @@
 import json
 import os
+import sqlite3
 
 from src.asset_simulator.depot_config.depot_config import AssetDepotConfig
 from src.asset_simulator.depot.asset_depot import AssetDepot
@@ -81,6 +82,20 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
         # departure deltas in minutes
         results = runtime.run(plot_output=False, random_sort=random_sort)
 
+        con = sqlite3.connect('test.db')
+        cur = con.cursor()
+        # cur.execute("CREATE TABLE IF NOT EXISTS results(random_sort, vehicles, l2_stations, departure_deltas, n_dcfc)")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS results(
+            departure_id INTEGER PRIMARY KEY,
+            random_sort TEXT NOT NULL,
+            vehicles INTEGER,
+            l2_station INTEGER,
+            departure_deltas REAL,
+            n_dcfc INTEGER
+        )
+        """)
+
         output = \
             {
                 'random_sort': random_sort,
@@ -91,7 +106,24 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
                 'n_dcfc': dcfc_station_count
             }
 
+        sql_template = """
+        INSERT INTO results(random_sort, vehicles, l2_station, departure_deltas, n_dcfc) VALUES({random_sort}, {vehicles}, {l2_stations}, {departure_delta}, {n_dcfc});
+        """
+
+        # cycle through each delta
+        for departure_delta in results:
+            sql_formatted = sql_template.format(
+                random_sort=random_sort,
+                vehicles=sedan_count,
+                l2_stations=l2_station_count,
+                departure_delta=departure_delta,
+                n_dcfc=dcfc_station_count
+            )
+
+            cur.execute(sql_formatted)
+        con.commit()
+
         print('simulation complete')
 
 
-    return output
+    # return output

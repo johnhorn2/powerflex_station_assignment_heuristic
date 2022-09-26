@@ -55,38 +55,16 @@ def run(random_sort, n_days, n_repeats, l2_station_min, l2_station_max, l2_steps
                 for station_count in L2_STATIONS:
                     bar.update(1)
 
-                    output_list.append(
-                        single_run(
-                            n_days=n_days,
-                            sedan_count=veh,
-                            suv_count=0,
-                            crossover_count=0,
-                            l2_station_count=station_count,
-                            random_sort=random_sort,
-                            dcfc_station_count=n_dcfc,
-                            asset_config='hiker_9_to_5.json'
-                        )
+                    single_run(
+                        n_days=n_days,
+                        sedan_count=veh,
+                        suv_count=0,
+                        crossover_count=0,
+                        l2_station_count=station_count,
+                        random_sort=random_sort,
+                        dcfc_station_count=n_dcfc,
+                        asset_config='hiker_9_to_5.json'
                     )
-
-
-    result_dict = {}
-
-
-    for result_dict in output_list:
-        key = Result(result_dict['vehicles'], result_dict['l2_stations'], result_dict['random_sort'], result_dict['n_dcfc'])
-        try:
-            # list instantiated already
-            result_dict[key].append(result_dict['departure_deltas'])
-        except KeyError:
-            # need to initiate list for this new index
-            result_dict[key] = []
-            result_dict[key].append(result_dict['departure_deltas'])
-
-    cwd = os.getcwd()
-    target = 'src/plotter/data_from_prior_runs/old/' + output_file_name + '.pickle'
-    path = os.path.join(cwd,target)
-    with open(path, 'wb') as handle:
-        pickle.dump(result_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 if __name__ == '__main__':
     run()

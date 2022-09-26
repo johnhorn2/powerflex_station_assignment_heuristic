@@ -9,10 +9,37 @@ Inspiration: https://docs.streamlit.io/knowledge-base/tutorials/deploy/docker
 
 In a terminal from the parent repo folder
 
+## SQLite3 Prep
+For better formatting and individual viewing of simulation run results first run this in terminal:
+```
+echo $HOME
+```
+now the directory returned is where you should place a file called:
+```
+touch {YOUR ECHO RESULTS ABOVE}/.sqliterc
+```
+and add the following lines for viewing ease:
+```
+.headers ON
+.mode columns
+```
+
+Inspect results by executing in directory of test.db after the db has been built from a few runs
+```
+sqlite3 test.db
+```
+
+type cmd + D to exit the sqlite console
+
+
+## Docker Build
+
 First build the docker image
 ```
 docker build --rm -t streamlit .
 ```
+
+## Running Sims in Docker
 
 If running an individual simulation for inspection
 ```
