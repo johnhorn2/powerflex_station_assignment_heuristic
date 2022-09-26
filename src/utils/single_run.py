@@ -84,11 +84,10 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
 
         con = sqlite3.connect('test.db')
         cur = con.cursor()
-        # cur.execute("CREATE TABLE IF NOT EXISTS results(random_sort, vehicles, l2_stations, departure_deltas, n_dcfc)")
         cur.execute("""
         CREATE TABLE IF NOT EXISTS results(
             departure_id INTEGER PRIMARY KEY,
-            random_sort TEXT NOT NULL,
+            random_sort INTEGER NOT NULL,
             vehicles INTEGER,
             l2_station INTEGER,
             departure_deltas REAL,
@@ -106,9 +105,7 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
                 'n_dcfc': dcfc_station_count
             }
 
-        sql_template = """
-        INSERT INTO results(random_sort, vehicles, l2_station, departure_deltas, n_dcfc) VALUES({random_sort}, {vehicles}, {l2_stations}, {departure_delta}, {n_dcfc});
-        """
+        sql_template = """INSERT INTO results(random_sort, vehicles, l2_station, departure_deltas, n_dcfc) VALUES({random_sort}, {vehicles}, {l2_stations}, {departure_delta}, {n_dcfc});"""
 
         # cycle through each delta
         for departure_delta in results:
@@ -126,4 +123,13 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
         print('simulation complete')
 
 
-    # return output
+if __name__ == '__main__':
+    n_days = 14
+    sedan_count = 85
+    suv_count = 0
+    crossover_count = 0
+    l2_station_count = 33
+    dcfc_station_count = 5
+    random_sort = 0
+    asset_config = 'hiker_9_to_5.json'
+    single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count, dcfc_station_count, random_sort, asset_config)
