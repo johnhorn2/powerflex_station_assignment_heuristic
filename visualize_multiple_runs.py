@@ -32,6 +32,14 @@ with st.echo(code_location='below'):
 
     n_dcfc = st.slider('# DC Fast Chargers', 0, 5, value=0)
     late_minute_threshold_slider = 60*st.number_input(label='# Hours = Late', min_value=0.25, max_value=24.0, value=0.5, step=0.15)
+    heuristic = True
+
+    heuristic = st.checkbox('Heuristic', value=True)
+
+    if heuristic:
+        random_sort = False
+    else:
+        random_sort = True
 
     def get_data(late_minute_threshold):
         con = sqlite3.connect('test.db')
@@ -135,7 +143,6 @@ with st.echo(code_location='below'):
         late_minute_threshold= late_minute_threshold_slider
 
         df_result = get_data(late_minute_threshold=late_minute_threshold)
-        random_sort = 0
         df_filtered = df_result[(df_result['n_dcfc'] == target_dcfc) & (df_result['random_sort'] == random_sort)]
         fig = prep_figure(df_filtered)
 
