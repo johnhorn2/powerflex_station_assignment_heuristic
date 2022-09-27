@@ -31,6 +31,7 @@ with st.echo(code_location='below'):
     #--------- Load Data ------
 
     n_dcfc = st.slider('# DC Fast Chargers', 0, 5, value=0)
+    late_minute_threshold_slider = 60*st.number_input(label='# Hours = Late', min_value=0.25, max_value=24.0, value=0.5, step=0.15)
 
     def get_data(late_minute_threshold):
         con = sqlite3.connect('test.db')
@@ -113,39 +114,38 @@ with st.echo(code_location='below'):
                             yaxis_title='# EV',
                             zaxis_title='Pct Hour Late'),
                             width=700,
-                            margin=dict(r=20, b=10, l=10, t=10))
+                            margin=dict(r=20, b=10, l=10, t=10),
+        )
+
+        fig.update_layout(scene = dict (
+                            zaxis = dict(range=[0,100],))
+
+        )
 
         return fig
 
-    df_result = get_data(late_minute_threshold=60)
 
     target_dcfc = 0
+    late_minute_threshold = 60
 
     if n_dcfc:
         target_dcfc = n_dcfc
 
+    if late_minute_threshold_slider:
+        late_minute_threshold= late_minute_threshold_slider
+
+        df_result = get_data(late_minute_threshold=late_minute_threshold)
+        random_sort = 0
+        df_filtered = df_result[(df_result['n_dcfc'] == target_dcfc) & (df_result['random_sort'] == random_sort)]
+        fig = prep_figure(df_filtered)
+
+        with st.container():
+            fig
+
+    df_result = get_data(late_minute_threshold=late_minute_threshold)
     random_sort = 0
 
 
     df_filtered = df_result[(df_result['n_dcfc'] == target_dcfc) & (df_result['random_sort'] == random_sort)]
     fig = prep_figure(df_filtered)
-
-    # ---------------  Make UI
-
-
-    run = st.button(
-      label='run'
-    )
-
-    if run:
-        with st.container():
-            # df_filtered
-            fig
-            # df_filtered
-            # st.plotly_chart(fig, use_container_width=True)
-
-
-
-
-
 
