@@ -43,7 +43,7 @@ docker build --rm -t streamlit .
 
 If running an individual simulation for inspection
 ```
-docker run -v $(pwd):/home/code -p 8501:8501 streamlit visualize_single_run.py
+docker run -v $(pwd):/home/code -p 8080:8080 streamlit visualize_single_run.py --server.port 8080
 ```
 
 If running the site SLA tool
