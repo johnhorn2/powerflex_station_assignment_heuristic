@@ -42,6 +42,26 @@ class RuntimeEnvironment(BaseModel):
         df_actual_departures = pd.DataFrame.from_dict(self.asset_simulator.departure_snapshot)
         df_actual_departures['departure_delta_minutes'] = df_actual_departures['actual_departure_datetime'] - df_actual_departures['scheduled_departure_datetime']
         df_actual_departures['departure_delta_minutes'] = pd.to_timedelta(df_actual_departures['departure_delta_minutes'])/pd.Timedelta('60s')
+        # df_reservation_assignments = pd.DataFrame.from_dict(self.asset_simulator.reservation_assignment_snapshot)
+
+        flat_list_results = []
+        for veh_key, veh_res_list in self.asset_simulator.reservation_assignment_snapshot.items():
+            # we need to exclude non-vehicle assignments
+            if veh_key != None:
+                for res in veh_res_list:
+                    # find the corresponding item in the dataframe
+                    delta_minutes = df_actual_departures.loc[(df_actual_departures['vehicle_id'] == veh_key) & (df_actual_departures['reservation_id'] == res.id)]['departure_delta_minutes'].values
+
+                    if len(delta_minutes) > 0:
+                        delta_minutes = delta_minutes[0]
+                    elif len(delta_minutes) == 0:
+                        # if the departure never occured we default to a large delta minutes departure for tracking
+                        # NOTE: use delta from current_timestamp and prior
+                        delta_minutes = self.asset_simulator.current_datetime - res.departure_timestamp_utc
+                        delta_minutes = delta_minutes.total_seconds()/60
+
+                    flat_list_results.append(delta_minutes)
+
 
         if plot_output:
             plot = Plotter()
@@ -54,8 +74,9 @@ class RuntimeEnvironment(BaseModel):
             )
             # departure_delta_minutes = (pd.to_timedelta(df_actual_departures['departure_delta_minutes'])/pd.Timedelta('60s')).tolist()
             # return (soc_chart, departure_delta_minutes)
-            return (soc_chart, df_actual_departures)
+            return (soc_chart, df_actual_departures, self.asset_simulator.reservation_assignment_snapshot, flat_list_results)
 
         if plot_output == False:
-            departure_delta_minutes = df_actual_departures['departure_delta_minutes'].tolist()
-            return departure_delta_minutes
+            # departure_delta_minutes = df_actual_departures['departure_delta_minutes'].tolist()
+            # return departure_delta_minutes
+            return flat_list_results

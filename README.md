@@ -8,14 +8,59 @@ To best serve our fleet operators or "hikers" decide where to plug in vehicles o
 Inspiration: https://docs.streamlit.io/knowledge-base/tutorials/deploy/docker
 
 In a terminal from the parent repo folder
+
+## SQLite3 Prep
+For better formatting and individual viewing of simulation run results first run this in terminal:
 ```
-docker build --rm -t streamlit .
-docker run -v $(pwd):/home/code -p 8501:8501 streamlit 
+echo $HOME
+```
+now the directory returned is where you should place a file called:
+```
+touch {YOUR ECHO RESULTS ABOVE}/.sqliterc
+```
+and add the following lines for viewing ease:
+```
+.headers ON
+.mode columns
 ```
 
-to execute from the command line a series of simulations:
+Inspect results by executing in directory of test.db after the db has been built from a few runs
 ```
-python3 -m src.utils.multi_run
+sqlite3 test.db
+```
+
+type cmd + D to exit the sqlite console
+
+
+## Docker Build
+
+First build the docker image
+```
+docker build --rm -t streamlit .
+```
+
+## Running Sims in Docker
+
+If running an individual simulation for inspection
+```
+docker run -v $(pwd):/home/code -p 8501:8501 streamlit visualize_single_run.py
+```
+
+If running the site SLA tool
+```
+docker run -v $(pwd):/home/code -p 8501:8501 streamlit visualize_multi_run.py
+```
+
+
+
+
+
+
+to execute from the command line a series of simulations use the following command
+from the parent directory.
+```
+python3 -m src.utils.multi_run_cmd_line --n_repeats=1 --n_dcfc=1
+python3 -m src.utils.multi_run_cmd_line  --n_dcfc=0  --n_repeats=1
 ```
 
 click on the url in the terminal

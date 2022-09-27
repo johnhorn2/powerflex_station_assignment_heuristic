@@ -1,6 +1,7 @@
 from collections import namedtuple
 import click
 import pickle
+import sqlite3
 
 import numpy as np
 
@@ -26,24 +27,20 @@ DCFC_STATIONS = np.arange(DCFC_STATION_MIN, DCFC_STATION_MAX, DCFC_STEPS)
 
 random_sort_list=[True,False]
 
-output_list = []
 for repeat in range(0,N_REPEATS):
     print('Repeat #: ' + str(repeat))
     for random_sort in random_sort_list:
         for veh in VEHICLES:
         # for dcfc_station_count in DCFC_STATIONS:
             for station_count in L2_STATIONS:
-                output_list.append(
-                    single_run(
-                        n_days=14,
-                        sedan_count=veh,
-                        suv_count=0,
-                        crossover_count=0,
-                        l2_station_count=station_count,
-                        random_sort=random_sort,
-                        dcfc_station_count=0,
-                        asset_config='hiker_9_to_5.json'
-                    )
+                single_run(
+                    n_days=14,
+                    sedan_count=veh,
+                    suv_count=0,
+                    crossover_count=0,
+                    l2_station_count=station_count,
+                    random_sort=random_sort,
+                    dcfc_station_count=0,
                 )
 
 
