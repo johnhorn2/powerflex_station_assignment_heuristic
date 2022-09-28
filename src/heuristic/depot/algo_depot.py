@@ -8,7 +8,7 @@ from typing import Optional, Dict, List
 from src.asset_simulator.depot.asset_depot import AssetDepot
 from src.asset_simulator.reservation.reservation import Reservation
 from src.asset_simulator.vehicle.vehicle import Vehicle
-
+from src.demand_simulator.demand_simulator.demand_simulator import DemandSimulator
 
 class AlgoDepot(AssetDepot):
     walk_in_pool: Optional[Dict[int, Vehicle]] = {}
@@ -31,7 +31,8 @@ class AlgoDepot(AssetDepot):
         self.poll_queues()
 
         # filter out vehicles driving
-        self.fleet_manager.vehicle_fleet.vehicles = self.fleet_manager.vehicle_fleet.get_available_vehicles_at_depot()
+        # we actually should reserve vehicles out driving so long as their res does not overlap
+        # self.fleet_manager.vehicle_fleet.vehicles = self.fleet_manager.vehicle_fleet.get_available_vehicles_at_depot()
 
         # scan QR events - adds newly available vehicles
         self.get_qr_scan_events()
@@ -103,6 +104,34 @@ class AlgoDepot(AssetDepot):
 
     # depot related functions
 
+    def get_vehicles_with_overlapping_reservations(self, new_reservation):
+        exclude_overlapping_vehicles = []
+        for past_res in self.past_reservation_assignments.values():
+            overlap = DemandSimulator.reservation_does_overlap(
+                new_reservation,
+                past_res.departure_timestamp_utc,
+                past_res.arrival_timestamp_utc
+            )
+            if overlap:
+                exclude_overlapping_vehicles.append(past_res.assigned_vehicle_id)
+        return exclude_overlapping_vehicles
+
+    def get_vehicle_for_reservation(self, vehicle_ids, exclude_vehicle_ids, assigned_vehicle_ids):
+        _vehicle_ids = set(vehicle_ids)
+        _exclude = set(exclude_vehicle_ids)
+        _assigned_vehicle_ids = set(assigned_vehicle_ids)
+        available_ids = (_vehicle_ids.symmetric_difference(_exclude))
+        total_available_ids = list(available_ids.symmetric_difference(_assigned_vehicle_ids))
+
+        # because vehicle_ids preserves the order in descending soc we need to cycle in that order
+        # and check if available veh id is in total available ids
+        for veh_id in vehicle_ids:
+            if veh_id != None:
+                if veh_id in total_available_ids:
+                    return veh_id
+        return None
+
+
     def assign_vehicles_reservations_by_type_and_highest_soc(self, random_sort=False):
         # create a list of all possible vehicle types
         vehicle_types = list(set([vehicle.type for vehicle in self.vehicles.values()]))
@@ -110,6 +139,7 @@ class AlgoDepot(AssetDepot):
         for vehicle_type in vehicle_types:
 
             vehicles_soc_sorted = self.fleet_manager.vehicle_fleet.sort_vehicles_highest_soc_first_by_type(self.vehicles.values(), vehicle_type)
+            vehicles_soc_sorted_ids = [veh.id for veh in vehicles_soc_sorted]
             reservations_departure_sorted = self.sort_departures_earliest_first(vehicle_type)
 
             if random_sort:
@@ -117,53 +147,58 @@ class AlgoDepot(AssetDepot):
                 random.shuffle(vehicles_soc_sorted)
                 random.shuffle(reservations_departure_sorted)
 
-            # remove any vehicles that are dedicated to the walk in pool
-            # vehicles_soc_sorted = [vehicle for vehicle in vehicles_soc_sorted if not self.fleet_manager.vehicle_fleet.vehicle_in_walk_in_pool(vehicle.id)]
-
-            # need to assign remaining reservations assigned vehicle id of None explicitly to overwrite any previous requests
-            delta_vehicles_reservations = len(reservations_departure_sorted) - len(vehicles_soc_sorted)
-
-            # more reservations than vehicles
-            if delta_vehicles_reservations > 0:
-                vehicles_soc_sorted = vehicles_soc_sorted + [None]*delta_vehicles_reservations
-
-
             # no vehicle / reservations to assign
             if len(vehicles_soc_sorted) == 0 or len(reservations_departure_sorted) == 0:
                 pass
             else:
+                # we need to keep track of vehicles assigned
+                assigned_vehicles = []
                 for idx, reservation in enumerate(reservations_departure_sorted):
 
+                    # for this given reservation we need a list of vehicles to exclude due to overlapping res
+
                     if self.reservation_is_new(reservation) or self.reservation_is_unique(reservation):
-                    # if self.new_unique_reservation(reservation):
 
-                        # move the reservation to the assigned pile
-                        self.reservation_assignments[reservation.id] = self.reservations[reservation.id]
+                        exclude_vehicle_ids = self.get_vehicles_with_overlapping_reservations(reservation)
 
-                        # need to keep a record of past reservation assignments so we don't send redundant requests
-                        self.past_reservation_assignments[reservation.id] = self.reservations[reservation.id]
+                        # cycle through sorted vehicles for assignment
+                        target_vehicle_id = self.get_vehicle_for_reservation(vehicles_soc_sorted_ids, exclude_vehicle_ids, assigned_vehicles)
+
+                        if target_vehicle_id:
+
+                            # move the reservation to the assigned pile
+                            self.reservation_assignments[reservation.id] = self.reservations[reservation.id]
+
+                            # need to keep a record of past reservation assignments so we don't send redundant requests
+                            self.past_reservation_assignments[reservation.id] = self.reservations[reservation.id]
 
 
-                        # fill in the assigned vehicle_id
-                        if vehicles_soc_sorted[idx]:
                             # add the assignment timestamp
                             self.reservation_assignments[reservation.id].assigned_at_timestamp_utc = self.current_datetime
                             # add the vehicle id to be assigned
-                            self.reservation_assignments[reservation.id].assigned_vehicle_id = vehicles_soc_sorted[idx].id
+                            self.reservation_assignments[reservation.id].assigned_vehicle_id = target_vehicle_id
 
                             # need to keep a record of past reservation assignments so we don't send redundant requests
                             self.past_reservation_assignments[reservation.id] = self.reservation_assignments[reservation.id]
+
+                            # we successfully found a vehicle
+                            assigned_vehicles.append(target_vehicle_id)
+
                         else:
+                            # no vehicle assigned to reservation thus no assignment being sent off
+                            pass
+
+                        # else:
                             # We have to assign reservations None Vehicle ID because if we previously assigned a reservation a vehicle id we need to overwrite that in some cases
-                            if self.reservation_is_new(reservation) == False and self.reservation_is_unique(reservation) == True:
-                                self.reservation_assignments[reservation.id].assigned_vehicle_id = None
-                                self.reservation_assignments[reservation.id].status = 'vehicle_reassignment'
+                            # if self.reservation_is_new(reservation) == False and self.reservation_is_unique(reservation) == True:
+                            #     self.reservation_assignments[reservation.id].assigned_vehicle_id = None
+                            #     self.reservation_assignments[reservation.id].status = 'vehicle_reassignment'
 
                                 # need to keep a record of past reservation assignments so we don't send redundant requests
-                                self.past_reservation_assignments[reservation.id] = self.reservation_assignments[reservation.id]
-                            else:
+                                # self.past_reservation_assignments[reservation.id] = self.reservation_assignments[reservation.id]
+                            # else:
                                 # only send reervations with no vehicles if there was an update made
-                                pass
+                                # pass
 
     def reservation_is_new(self, reservation):
         try:
@@ -483,3 +518,15 @@ class AlgoDepot(AssetDepot):
                         # need to locally simulate the plugin so we know the station and vehicle will be plugged in
                         self.fleet_manager.plugin(vehicle.id, available_dcfc_station_id)
 
+
+    @classmethod
+    def build_depot(cls, config, queue):
+        interval_seconds, queue, fleet_manager, schedule, vehicle_snapshot = cls.prep_build_depot(config, queue)
+        depot = AlgoDepot(
+            interval_seconds=config.interval_seconds,
+            queue=queue,
+            fleet_manager=fleet_manager,
+            schedule=schedule,
+            vehicle_snapshot={}
+        )
+        return depot

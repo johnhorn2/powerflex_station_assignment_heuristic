@@ -272,7 +272,7 @@ class AssetDepot(MsgBroker):
 
 
     @classmethod
-    def build_depot(cls, config, queue):
+    def prep_build_depot(cls, config, queue):
         # the folling are attribute that live within depot
         l2_max_power_kw = config.l2_max_power_kw
         dcfc_max_power_kw = config.dcfc_max_power_kw
@@ -328,14 +328,24 @@ class AssetDepot(MsgBroker):
 
         # if the minimum_ready_vehicle_pool is empty then default to empty dict
 
+        # depot = AssetDepot(
+        #     interval_seconds=config.interval_seconds,
+        #     queue=queue,
+        #     fleet_manager=fleet_manager,
+        #     schedule=schedule,
+        #     vehicle_snapshot={}
+        # )
+
+        return (config.interval_seconds, queue, fleet_manager, schedule, {})
+
+    @classmethod
+    def build_depot(cls, config, queue):
+        interval_seconds, queue, fleet_manager, schedule, vehicle_snapshot = cls.prep_build_depot(config, queue)
         depot = AssetDepot(
             interval_seconds=config.interval_seconds,
             queue=queue,
-            # stations=stations,
-            # vehicles=vehicles,
             fleet_manager=fleet_manager,
             schedule=schedule,
             vehicle_snapshot={}
         )
-
         return depot

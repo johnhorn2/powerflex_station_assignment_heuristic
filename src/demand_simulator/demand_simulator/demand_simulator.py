@@ -116,23 +116,33 @@ class DemandSimulator(MsgBroker):
             arrival = self.generate_arrival_time(departure)
             if self.is_vehicle_available(departure, arrival):
                 available_vehicles = self.get_available_vehicles(departure, arrival)
-                vehicle_id = random.randint(0, len(available_vehicles) - 1)
-                vehicle_type = available_vehicles[vehicle_id].type
+                # vehicle_id = random.randint(0, len(available_vehicles) - 1)
+                vehicle = random.choice(available_vehicles)
+                vehicle_type = available_vehicles[vehicle.id].type
                 self.send_reservation(departure, arrival, vehicle_type, walk_in)
             else:
                 pass
 
-    def reservation_does_overlap(self, reservation, departure, arrival):
+    @classmethod
+    def reservation_does_overlap(cls, reservation, departure, arrival):
         if departure > reservation.arrival_timestamp_utc:
             return False
         elif arrival < reservation.departure_timestamp_utc:
             return False
-        elif reservation.departure_timestamp_utc < arrival < reservation.arrival_timestamp_utc:
+        elif (arrival <= reservation.departure_timestamp_utc) & (arrival >= reservation.departure_timestamp_utc):
             return True
-        elif reservation.departure_timestamp_utc < departure < reservation.arrival_timestamp_utc:
+        elif (departure >= reservation.departure_timestamp_utc) & (departure <= reservation.arrival_timestamp_utc):
             return True
 
     def get_available_vehicles(self, departure, arrival):
+        """
+        determines which vehicles are available for this candidate reservation
+        given the dept and arrival for the future reservation
+
+        :param departure:
+        :param arrival:
+        :return:
+        """
         avail_vehicles = [veh.id for veh in self.vehicles.values()]
         unavail_vehicles = []
         for res in self.reservations.values():
@@ -185,7 +195,10 @@ class DemandSimulator(MsgBroker):
 
     def generate_reservations_at_midnight(self):
         # at midnight generate new batch of reservations
-        if self.current_datetime.hour == 0 and self.current_datetime.minute == 0 and self.current_datetime.second == 0:
+        # if self.current_datetime.hour == 0 and self.current_datetime.minute == 0 and self.current_datetime.second == 0:
+
+        # on the top of the hour every hour
+        if self.current_datetime.minute == 0 and self.current_datetime.second == 0:
             # self.reservations = self.generate_reservations_24_hours_ahead(self.current_datetime)
             self.generate_reservations_24_hours_ahead(self.current_datetime)
 

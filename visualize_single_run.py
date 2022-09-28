@@ -19,6 +19,7 @@ from src.demand_simulator.demand_simulator.demand_simulator import DemandSimulat
 from src.demand_simulator.demand_simulator_config.demand_simulator_config import DemandSimulatorConfig
 from src.heuristic.depot.algo_depot import AlgoDepot
 from src.mock_queue.mock_queue import MockQueue
+from src.tests.test_reservation_overlap import TestReservationOverlap
 
 """
 # Heuristic Simulator
@@ -190,6 +191,12 @@ with st.echo(code_location='below'):
          # st.dataframe(df_deltas)
          # reservation_snapshot
          # veh_res_tracker
+         snapshot = runtime.asset_simulator.reservation_assignment_snapshot
+         overlaps, res1, res2 = TestReservationOverlap.assigned_overlaps_exist(snapshot)
+         overlaps
+         res1
+         res2
+         snapshot
 
 
    # print(len(runtime.asset_simulator.vehicles))

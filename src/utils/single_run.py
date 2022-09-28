@@ -11,7 +11,7 @@ from src.mock_queue.mock_queue import MockQueue
 
 from src.utils.utils import RuntimeEnvironment
 
-def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count, dcfc_station_count, random_sort, asset_config):
+def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count, dcfc_station_count, random_sort, asset_config, write_results=True):
 
     # print('running with dcfc_count: ' + str(dcfc_station_count) + ' and l2_station_count: ' + str(station_count))
     print('running with veh_count: ' + str(sedan_count) + ' and l2_station_count: ' + str(l2_station_count))
@@ -82,43 +82,35 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
         # departure deltas in minutes
         results = runtime.run(plot_output=False, random_sort=random_sort)
 
-        con = sqlite3.connect('test.db')
-        cur = con.cursor()
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS results(
-            departure_id INTEGER PRIMARY KEY,
-            random_sort INTEGER NOT NULL,
-            vehicles INTEGER,
-            l2_station INTEGER,
-            departure_deltas REAL,
-            n_dcfc INTEGER
-        )
-        """)
+        if write_results:
 
-        output = \
-            {
-                'random_sort': random_sort,
-                # 'dcfc_stations': dcfc_station_count,
-                'vehicles': sedan_count,
-                'l2_stations': l2_station_count,
-                'departure_deltas': results,
-                'n_dcfc': dcfc_station_count
-            }
-
-        sql_template = """INSERT INTO results(random_sort, vehicles, l2_station, departure_deltas, n_dcfc) VALUES({random_sort}, {vehicles}, {l2_stations}, {departure_delta}, {n_dcfc});"""
-
-        # cycle through each delta
-        for departure_delta in results:
-            sql_formatted = sql_template.format(
-                random_sort=random_sort,
-                vehicles=sedan_count,
-                l2_stations=l2_station_count,
-                departure_delta=departure_delta,
-                n_dcfc=dcfc_station_count
+            con = sqlite3.connect('test.db')
+            cur = con.cursor()
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS results(
+                departure_id INTEGER PRIMARY KEY,
+                random_sort INTEGER NOT NULL,
+                vehicles INTEGER,
+                l2_station INTEGER,
+                departure_deltas REAL,
+                n_dcfc INTEGER
             )
+            """)
 
-            cur.execute(sql_formatted)
-        con.commit()
+            sql_template = """INSERT INTO results(random_sort, vehicles, l2_station, departure_deltas, n_dcfc) VALUES({random_sort}, {vehicles}, {l2_stations}, {departure_delta}, {n_dcfc});"""
+
+            # cycle through each delta
+            for departure_delta in results:
+                sql_formatted = sql_template.format(
+                    random_sort=random_sort,
+                    vehicles=sedan_count,
+                    l2_stations=l2_station_count,
+                    departure_delta=departure_delta,
+                    n_dcfc=dcfc_station_count
+                )
+
+                cur.execute(sql_formatted)
+            con.commit()
 
         print('simulation complete')
 
@@ -132,4 +124,4 @@ if __name__ == '__main__':
     dcfc_station_count = 5
     random_sort = 0
     asset_config = 'hiker_9_to_5.json'
-    single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count, dcfc_station_count, random_sort, asset_config)
+    single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count, dcfc_station_count, random_sort, asset_config, write_results=False)
