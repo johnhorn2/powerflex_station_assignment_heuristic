@@ -8,7 +8,7 @@ from src.demand_simulator.demand_simulator.demand_simulator import DemandSimulat
 from src.mock_queue.mock_queue import MockQueue
 from src.asset_simulator.reservation.reservation import Reservation
 from src.asset_simulator.vehicle.vehicle import Vehicle
-
+from src.tests.test_veh_res_assignment import TestVehicleReservationAssignment
 
 class TestReservationOverlap(unittest.TestCase):
 
@@ -154,6 +154,61 @@ class TestReservationOverlap(unittest.TestCase):
 
         is_overlap = demand_sim.reservation_does_overlap(res1, res2.departure_timestamp_utc, res2.arrival_timestamp_utc)
         assert is_overlap == True
+
+    def test_overlapping_reservation_detection_4(self):
+        """
+        make sure we can detect if two reservations are overlapping
+        :return:
+        """
+        res1 = self.get_reservation(
+            id=1,
+            departure=datetime(year=2022,month=1,day=2,hour=8,minute=30),
+            arrival=datetime(year=2022,month=1,day=3,hour=11),
+            vehicle_type='sedan',
+            walk_in=False
+        )
+        res2 = self.get_reservation(
+            id=1,
+            departure=datetime(year=2022,month=1,day=3,hour=8,minute=45),
+            arrival=datetime(year=2022,month=1,day=4,hour=9,minute=45),
+            vehicle_type='sedan',
+            walk_in=False
+        )
+
+        demand_sim = self.get_demand_simulator()
+        demand_sim.reservations[res1.id] = res1
+        demand_sim.reservations[res2.id] = res2
+
+        is_overlap = demand_sim.reservation_does_overlap(res1, res2.departure_timestamp_utc, res2.arrival_timestamp_utc)
+        assert is_overlap == True
+
+
+    def test_overlapping_reservation_detection_5(self):
+        """
+        make sure we can detect if two reservations are overlapping
+        :return:
+        """
+        res1 = self.get_reservation(
+            id=1,
+            departure=datetime(year=2022,month=1,day=2,hour=16),
+            arrival=datetime(year=2022,month=1,day=3,hour=14,minute=15),
+            vehicle_type='sedan',
+            walk_in=False
+        )
+        res2 = self.get_reservation(
+            id=1,
+            departure=datetime(year=2022,month=1,day=3,hour=7,minute=30),
+            arrival=datetime(year=2022,month=1,day=4,hour=9,minute=15),
+            vehicle_type='sedan',
+            walk_in=False
+        )
+
+        # make sure the algo function to detect prior reservations is working
+        algo_depot = TestVehicleReservationAssignment.get_algo_depot()
+        algo_depot.past_reservation_assignments = {res1.id: res1}
+        overlapping_vehicles = algo_depot.get_vehicles_with_overlapping_reservations(res2)
+        print(overlapping_vehicles)
+
 
     def test_non_overlapping_reservation_detection_1(self):
         """

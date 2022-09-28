@@ -129,9 +129,7 @@ class DemandSimulator(MsgBroker):
             return False
         elif arrival < reservation.departure_timestamp_utc:
             return False
-        elif (arrival <= reservation.departure_timestamp_utc) & (arrival >= reservation.departure_timestamp_utc):
-            return True
-        elif (departure >= reservation.departure_timestamp_utc) & (departure <= reservation.arrival_timestamp_utc):
+        else:
             return True
 
     def get_available_vehicles(self, departure, arrival):
@@ -195,10 +193,10 @@ class DemandSimulator(MsgBroker):
 
     def generate_reservations_at_midnight(self):
         # at midnight generate new batch of reservations
-        # if self.current_datetime.hour == 0 and self.current_datetime.minute == 0 and self.current_datetime.second == 0:
+        if self.current_datetime.hour == 0 and self.current_datetime.minute == 0 and self.current_datetime.second == 0:
 
         # on the top of the hour every hour
-        if self.current_datetime.minute == 0 and self.current_datetime.second == 0:
+        # if self.current_datetime.minute == 0 and self.current_datetime.second == 0:
             # self.reservations = self.generate_reservations_24_hours_ahead(self.current_datetime)
             self.generate_reservations_24_hours_ahead(self.current_datetime)
 

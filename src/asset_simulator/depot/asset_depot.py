@@ -15,6 +15,7 @@ from src.mock_queue.msg_broker import MsgBroker
 from src.asset_simulator.reservation.reservation import Reservation
 from src.asset_simulator.depot.fleet_manager import FleetManager
 from src.mock_queue.mock_queue import MockQueue
+from src.demand_simulator.demand_simulator.demand_simulator import DemandSimulator
 
 
 class AssetDepot(MsgBroker):
@@ -126,10 +127,12 @@ class AssetDepot(MsgBroker):
         departures = []
         veh = []
         for reservation in self.reservations.values():
-            if reservation.assigned_vehicle_id != None and reservation.status != 'complete':
-                if (self.current_datetime >= reservation.departure_timestamp_utc) and \
-                (self.vehicles[reservation.assigned_vehicle_id].state_of_charge >= 0.8) and \
-                (self.vehicles[reservation.assigned_vehicle_id].status != 'driving'):
+            valid_reservation = (reservation.assigned_vehicle_id != None) and (reservation.status != 'complete')
+            if valid_reservation:
+                vehicle_ready_to_depart = (self.current_datetime >= reservation.departure_timestamp_utc) and \
+                    (self.vehicles[reservation.assigned_vehicle_id].state_of_charge >= 0.8) and \
+                    (self.vehicles[reservation.assigned_vehicle_id].status != 'driving')
+                if vehicle_ready_to_depart:
                     departures.append(reservation)
                     veh.append(reservation.assigned_vehicle_id)
 

@@ -43,9 +43,6 @@ class AlgoDepot(AssetDepot):
         # filter out vehicles driving and expired reservations
         self.reservations = self.filter_out_expired_reservations(self.reservations)
 
-        # we need to estimate if the vehicle is departed internally so as not to assign it
-        # self.depart_vehicles()
-
         # if vehicles are 80% or more filled up then move to parking lot
         # todo: hold off on move commands for this V1
         # self.free_up_ready_vehicles()
@@ -120,8 +117,8 @@ class AlgoDepot(AssetDepot):
         _vehicle_ids = set(vehicle_ids)
         _exclude = set(exclude_vehicle_ids)
         _assigned_vehicle_ids = set(assigned_vehicle_ids)
-        available_ids = (_vehicle_ids.symmetric_difference(_exclude))
-        total_available_ids = list(available_ids.symmetric_difference(_assigned_vehicle_ids))
+        _available_ids = (_vehicle_ids.difference(_exclude))
+        total_available_ids = list(_available_ids.difference(_assigned_vehicle_ids))
 
         # because vehicle_ids preserves the order in descending soc we need to cycle in that order
         # and check if available veh id is in total available ids
@@ -164,7 +161,7 @@ class AlgoDepot(AssetDepot):
                         # cycle through sorted vehicles for assignment
                         target_vehicle_id = self.get_vehicle_for_reservation(vehicles_soc_sorted_ids, exclude_vehicle_ids, assigned_vehicles)
 
-                        if target_vehicle_id:
+                        if target_vehicle_id != None:
 
                             # move the reservation to the assigned pile
                             self.reservation_assignments[reservation.id] = self.reservations[reservation.id]
@@ -199,6 +196,38 @@ class AlgoDepot(AssetDepot):
                             # else:
                                 # only send reervations with no vehicles if there was an update made
                                 # pass
+
+                vehs_listed = [res.assigned_vehicle_id for res in self.reservation_assignments.values()]
+                uniq_vehs_listed = list(set(vehs_listed))
+                if len(vehs_listed) != len(uniq_vehs_listed):
+                    print('double assigned')
+
+    def is_vehicle_reservation_overlap(self):
+        ### See if we can detect an overlap here
+        vehs = []
+        for res in self.past_reservation_assignments.values():
+            vehs.append(res.assigned_vehicle_id)
+
+        uniq_vehicles = list(set(vehs))
+
+        for veh_id in uniq_vehicles:
+            veh_res_list = []
+            overlaps = []
+            overlap = False
+            for res in self.past_reservation_assignments.values():
+                if res.assigned_vehicle_id == veh_id:
+                    veh_res_list.append(res)
+
+            for res in veh_res_list:
+                for res_compare in veh_res_list:
+                    if res.id != res_compare.id:
+                        if DemandSimulator.reservation_does_overlap(res,
+                                                                    res_compare.departure_timestamp_utc,
+                                                                    res_compare.arrival_timestamp_utc):
+                            overlaps.append((res, res_compare))
+                            overlap = True
+                        return overlap
+        return False
 
     def reservation_is_new(self, reservation):
         try:

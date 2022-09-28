@@ -18,7 +18,8 @@ from src.asset_simulator.depot.fleet_manager import FleetManager
 
 class TestVehicleReservationAssignment(unittest.TestCase):
 
-    def get_algo_depot(self):
+    @classmethod
+    def get_algo_depot(cls):
         mock_queue = MockQueue(
             scan_events=[],
             reservations=[],
