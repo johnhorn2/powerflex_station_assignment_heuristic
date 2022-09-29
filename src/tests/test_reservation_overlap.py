@@ -46,17 +46,7 @@ class TestReservationOverlap(unittest.TestCase):
 
 
     def get_demand_simulator(self):
-        mock_queue = MockQueue(
-            scan_events=[],
-            reservations=[],
-            reservation_assignments=[],
-            move_charge=[],
-            departures=[],
-            walk_in_events=[],
-            vehicles_demand_sim=[],
-            vehicles_heuristic=[],
-            stations=[],
-        )
+        mock_queue = MockQueue()
 
         n_days = 7
         script_dir = os.path.dirname(__file__)  # <-- absolute dir the script is in

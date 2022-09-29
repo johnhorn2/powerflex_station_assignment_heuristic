@@ -20,17 +20,7 @@ class TestVehicleReservationAssignment(unittest.TestCase):
 
     @classmethod
     def get_algo_depot(cls):
-        mock_queue = MockQueue(
-            scan_events=[],
-            reservations=[],
-            reservation_assignments=[],
-            move_charge=[],
-            departures=[],
-            walk_in_events=[],
-            vehicles_demand_sim=[],
-            vehicles_heuristic=[],
-            stations=[],
-        )
+        mock_queue = MockQueue()
 
         script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
         demand_sim_config = '../demand_simulator/demand_simulator_config/configs/5days_15min_40res_per_day.json'

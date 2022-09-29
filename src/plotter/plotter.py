@@ -1,7 +1,8 @@
+import pandas as pd
 from pydantic import BaseModel
 
 import plotly.graph_objects as go
-# import plotly.express as px
+from plotly.graph_objects import Figure
 from plotly.subplots import make_subplots
 
 import numpy as np
@@ -200,3 +201,107 @@ class Plotter(BaseModel):
 
 
     # def get_reservation_completion(self, dataframe):
+
+    @classmethod
+    def get_x_y_z(cls, df_results: pd.DataFrame, z_field_name: str) -> (np.ndarray, np.ndarray, np.ndarray):
+        # Prep Z for Heuristic
+        ev_cnt_ordered_list = sorted(df_results.vehicles.unique())
+        evse_cnt_ordered_list = sorted(df_results.l2_station.unique())
+
+        evse_dim = len(evse_cnt_ordered_list)
+        ev_dim = len(ev_cnt_ordered_list)
+        new_shape = (evse_dim, ev_dim)
+
+        # ---------------------------------------
+
+        z = np.ones(new_shape)
+
+        for evse_idx in range(0,evse_dim):
+            for ev_idx in range(0, ev_dim):
+                evse_val = evse_cnt_ordered_list[evse_idx]
+                ev_val = ev_cnt_ordered_list[ev_idx]
+
+                # z_val = df_results[(df_results['l2_station'] == evse_val) & (df_results['vehicles'] == ev_val)].pct_late.values
+                z_val = df_results[(df_results['l2_station'] == evse_val) & (df_results['vehicles'] == ev_val)][z_field_name].values
+                z[evse_idx,ev_idx]= z_val
+
+        x = evse_cnt_ordered_list
+        y = ev_cnt_ordered_list
+
+        z = z.transpose()
+
+        return x, y ,z
+
+    @classmethod
+    def get_power_3d_surface_figure(cls, df_results: pd.DataFrame) -> Figure:
+
+        x, y, z = cls.get_x_y_z(df_results, 'max_power')
+
+        fig = go.Figure(data=[
+            go.Surface(z=z, x=x, y=y, opacity=1.0,
+                       hovertemplate = "EVSE cnt: %{x}" + "<br>EV cnt: %{y}" + "<br>%{z} Max Power Draw"),
+        ],
+
+        )
+        fig.update_layout(title='Peak Power Draw (kW)',autosize=True,
+                          width=500, height=500,
+                          margin=dict(l=65, r=50, b=65, t=90),
+                          )
+        fig.update_layout(scene = dict(
+            xaxis_title='# EVSE',
+            yaxis_title='# EV',
+            zaxis_title='Peak Power Draw (kw)'),
+            width=700,
+            margin=dict(r=20, b=10, l=10, t=10),
+        )
+
+        fig.update_layout(
+            title={'y':0.9,
+                   'yanchor': 'top'
+                   }
+        )
+
+        return fig, x, y ,z
+
+
+    @classmethod
+    def get_kpi_3d_surface_figure(cls, df_results: pd.DataFrame) -> Figure:
+
+        x, y, z = cls.get_x_y_z(df_results, 'pct_late')
+
+        z = z / 100.0
+
+        fig = go.Figure(data=[
+            go.Surface(z=z, x=x, y=y, opacity=1.0,
+                       hovertemplate = "EVSE cnt: %{x}" + "<br>EV cnt: %{y}" + "<br>%{z:.2f}% Late Departures"),
+        ],
+
+        )
+        fig.update_layout(title='Percent Hour Late',autosize=True,
+                          width=500, height=500,
+                          margin=dict(l=65, r=50, b=65, t=90),
+                          )
+        fig.update_layout(scene = dict(
+            xaxis_title='# EVSE',
+            yaxis_title='# EV',
+            zaxis_title='Pct Hour Late'),
+            width=700,
+            margin=dict(r=20, b=10, l=10, t=10),
+        )
+
+        fig.update_layout(scene = dict (
+            zaxis = dict(
+                range=[0,1],
+                tickformat='.1%'
+                         )
+        )
+
+        )
+
+        fig.update_layout(
+            title={'y':0.9,
+                   'yanchor': 'top'
+                   }
+        )
+
+        return fig

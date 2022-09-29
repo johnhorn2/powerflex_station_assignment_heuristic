@@ -13,20 +13,9 @@ from src.utils.utils import RuntimeEnvironment
 
 def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count, dcfc_station_count, random_sort, asset_config, write_results=True):
 
-    # print('running with dcfc_count: ' + str(dcfc_station_count) + ' and l2_station_count: ' + str(station_count))
     print('running with veh_count: ' + str(sedan_count) + ' and l2_station_count: ' + str(l2_station_count))
     # setup mock queue
-    mock_queue = MockQueue(
-        scan_events=[],
-        reservations=[],
-        reservation_assignments=[],
-        move_charge=[],
-        departures=[],
-        walk_in_events=[],
-        vehicles_demand_sim=[],
-        vehicles_heuristic=[],
-        stations=[],
-    )
+    mock_queue = MockQueue()
 
     script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
     demand_sim_config = '../demand_simulator/demand_simulator_config/configs/5days_15min_40res_per_day.json'
