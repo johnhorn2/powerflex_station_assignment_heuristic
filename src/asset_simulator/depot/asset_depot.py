@@ -1,7 +1,7 @@
 from collections import namedtuple
 from datetime import datetime, timedelta
 import json
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List
 
 from pydantic import BaseModel
 import numpy as np
@@ -15,6 +15,7 @@ from src.mock_queue.msg_broker import MsgBroker
 from src.asset_simulator.reservation.reservation import Reservation
 from src.asset_simulator.depot.fleet_manager import FleetManager
 from src.mock_queue.mock_queue import MockQueue
+from src.demand_simulator.demand_simulator.demand_simulator import DemandSimulator
 
 
 class AssetDepot(MsgBroker):
@@ -29,6 +30,7 @@ class AssetDepot(MsgBroker):
     l2_charging_rate_kw: float = 12
     dcfc_charging_rate_kw: float = 150
     vehicle_soc_snapshot: Dict[str, List] = {}
+    power_snapshot: Dict[datetime, float] = {}
     vehicle_status_snapshot: Dict[str, List] = {}
     departure_snapshot: Dict[str, List] = {}
 
@@ -71,6 +73,16 @@ class AssetDepot(MsgBroker):
         self.vehicle_soc_snapshot['datetime'].append(self.current_datetime)
         for vehicle in self.vehicles.values():
             self.vehicle_soc_snapshot[vehicle.id].append(vehicle.state_of_charge)
+
+            # to create a power snapshot on a meter basis
+            if vehicle.status == 'charging':
+                station = self.fleet_manager.stations[vehicle.connected_station_id]
+                try:
+                    self.power_snapshot[self.current_datetime] += station.max_power_kw
+                # initialize the dictionary entry first
+                except Exception:
+                    self.power_snapshot[self.current_datetime] = 0
+                    self.power_snapshot[self.current_datetime] += station.max_power_kw
 
 
         # add vehicle status
@@ -126,10 +138,12 @@ class AssetDepot(MsgBroker):
         departures = []
         veh = []
         for reservation in self.reservations.values():
-            if reservation.assigned_vehicle_id != None and reservation.status != 'complete':
-                if (self.current_datetime >= reservation.departure_timestamp_utc) and \
-                (self.vehicles[reservation.assigned_vehicle_id].state_of_charge >= 0.8) and \
-                (self.vehicles[reservation.assigned_vehicle_id].status != 'driving'):
+            valid_reservation = (reservation.assigned_vehicle_id != None) and (reservation.status != 'complete')
+            if valid_reservation:
+                vehicle_ready_to_depart = (self.current_datetime >= reservation.departure_timestamp_utc) and \
+                    (self.vehicles[reservation.assigned_vehicle_id].state_of_charge >= 0.8) and \
+                    (self.vehicles[reservation.assigned_vehicle_id].status != 'driving')
+                if vehicle_ready_to_depart:
                     departures.append(reservation)
                     veh.append(reservation.assigned_vehicle_id)
 
@@ -272,7 +286,7 @@ class AssetDepot(MsgBroker):
 
 
     @classmethod
-    def build_depot(cls, config, queue):
+    def prep_build_depot(cls, config, queue):
         # the folling are attribute that live within depot
         l2_max_power_kw = config.l2_max_power_kw
         dcfc_max_power_kw = config.dcfc_max_power_kw
@@ -315,7 +329,7 @@ class AssetDepot(MsgBroker):
                     #todo: need to randomly set this
                     state_of_charge=0.8,
                     energy_capacity_kwh= vehicle_settings['kwh_capacity'],
-                    status='NA'
+                    status='parked'
                 )
                 vehicles[vehicle_idx] = vehicle
 
@@ -328,14 +342,24 @@ class AssetDepot(MsgBroker):
 
         # if the minimum_ready_vehicle_pool is empty then default to empty dict
 
+        # depot = AssetDepot(
+        #     interval_seconds=config.interval_seconds,
+        #     queue=queue,
+        #     fleet_manager=fleet_manager,
+        #     schedule=schedule,
+        #     vehicle_snapshot={}
+        # )
+
+        return (config.interval_seconds, queue, fleet_manager, schedule, {})
+
+    @classmethod
+    def build_depot(cls, config, queue):
+        interval_seconds, queue, fleet_manager, schedule, vehicle_snapshot = cls.prep_build_depot(config, queue)
         depot = AssetDepot(
             interval_seconds=config.interval_seconds,
             queue=queue,
-            # stations=stations,
-            # vehicles=vehicles,
             fleet_manager=fleet_manager,
             schedule=schedule,
             vehicle_snapshot={}
         )
-
         return depot

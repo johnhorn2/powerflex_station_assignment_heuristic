@@ -19,6 +19,7 @@ from src.demand_simulator.demand_simulator.demand_simulator import DemandSimulat
 from src.demand_simulator.demand_simulator_config.demand_simulator_config import DemandSimulatorConfig
 from src.heuristic.depot.algo_depot import AlgoDepot
 from src.mock_queue.mock_queue import MockQueue
+from src.tests.test_reservation_overlap import TestReservationOverlap
 
 """
 # Heuristic Simulator
@@ -31,17 +32,7 @@ with st.echo(code_location='below'):
    # run algo
 
    # setup mock queue
-   mock_queue = MockQueue(
-      scan_events=[],
-      reservations=[],
-      reservation_assignments=[],
-      move_charge=[],
-      departures=[],
-      walk_in_events=[],
-      vehicles_demand_sim=[],
-      vehicles_heuristic=[],
-      stations=[],
-   )
+   mock_queue = MockQueue()
 
    # setup demand_simulator
    script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
@@ -133,7 +124,7 @@ with st.echo(code_location='below'):
    print(asset_depot_config)
 
    asset_depot = AssetDepot.build_depot(config=asset_depot_config, queue=mock_queue)
-   asset_depot.initialize_plugins()
+   # asset_depot.initialize_plugins()
 
    print('num vehicles test 123')
    print(len(asset_depot.vehicles))
@@ -178,21 +169,15 @@ with st.echo(code_location='below'):
          'number of late departures: ' + str(num)
          'number of departures: ' + str(denom)
          '% of departures late: ' + str(round(100.0*(num/denom), 2))
-         # num = len(df_deltas[df_deltas['departure_delta_minutes'] >= 60])
-         # denom = len(df_deltas)
-         # num
-         # denom
-         # (100.0*num)/denom
          st.plotly_chart(chart, use_container_width=True)
-         # st.dataframe(pd.DataFrame.from_dict(runtime.asset_simulator.vehicles[15].log))
-         # st.dataframe(pd.DataFrame.from_dict(runtime.asset_simulator.reservation_assignment_snapshot))
-         # st.dataframe(runtime.asset_simulator.reservations)
-         # st.dataframe(df_deltas)
-         # reservation_snapshot
-         # veh_res_tracker
+         snapshot = runtime.asset_simulator.reservation_assignment_snapshot
+         overlaps, res1, res2 = TestReservationOverlap.assigned_overlaps_exist(snapshot)
+         overlaps
+         res1
+         res2
+         snapshot
 
 
-   # print(len(runtime.asset_simulator.vehicles))
    print('simulation complete')
 
 

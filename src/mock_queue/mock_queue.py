@@ -8,13 +8,13 @@ from src.asset_simulator.station.station import Station
 
 
 class MockQueue(BaseModel):
-    scan_events: List[str]
-    reservations: List[str]
-    reservation_assignments: List[str]
-    move_charge: List[str]
-    departures: List[str]
+    scan_events: List[str] = []
+    reservations: List[str] = []
+    reservation_assignments: List[str] = []
+    move_charge: List[str] = []
+    departures: List[str] = []
     # walk ins are just treated as reservations with type = 'walk_in'
     # walk_in_events: List[str]
-    vehicles_demand_sim: List[str]
-    vehicles_heuristic: List[str]
-    stations: List[str]
+    vehicles_demand_sim: List[str] = []
+    vehicles_heuristic: List[str] = []
+    stations: List[str] = []
