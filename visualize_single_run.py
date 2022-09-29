@@ -134,7 +134,7 @@ with st.echo(code_location='below'):
    print(asset_depot_config)
 
    asset_depot = AssetDepot.build_depot(config=asset_depot_config, queue=mock_queue)
-   asset_depot.initialize_plugins()
+   # asset_depot.initialize_plugins()
 
    print('num vehicles test 123')
    print(len(asset_depot.vehicles))

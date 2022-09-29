@@ -57,7 +57,7 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
 
         asset_depot_config = AssetDepotConfig(**asset_sim_config)
         asset_depot = AssetDepot.build_depot(config=asset_depot_config, queue=mock_queue)
-        asset_depot.initialize_plugins()
+        # asset_depot.initialize_plugins()
 
         # setup heuristic
         # add a few more algo specific configs
@@ -87,7 +87,7 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
             con = sqlite3.connect('test.db')
             cur = con.cursor()
             cur.execute("""
-            CREATE TABLE IF NOT EXISTS results(
+            CREATE TABLE IF NOT EXISTS late_departures(
                 departure_id INTEGER PRIMARY KEY,
                 random_sort INTEGER NOT NULL,
                 vehicles INTEGER,
@@ -97,7 +97,20 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
             )
             """)
 
-            sql_template = """INSERT INTO results(random_sort, vehicles, l2_station, departure_deltas, n_dcfc) VALUES({random_sort}, {vehicles}, {l2_stations}, {departure_delta}, {n_dcfc});"""
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS power_stats(
+                sim_id INTEGER PRIMARY KEY,
+                random_sort INTEGER NOT NULL,
+                n_dcfc INTEGER,
+                l2_station INTEGER,
+                vehicles INTEGER,
+                max_power REAL,
+                min_power REAL,
+                avg_power REAL 
+            )
+            """)
+
+            sql_template = """INSERT INTO late_departures(random_sort, vehicles, l2_station, departure_deltas, n_dcfc) VALUES({random_sort}, {vehicles}, {l2_stations}, {departure_delta}, {n_dcfc});"""
 
             # cycle through each delta
             for departure_delta in results:
@@ -110,6 +123,24 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
                 )
 
                 cur.execute(sql_formatted)
+
+            # mark the max power draw at a given point in time
+            list_of_power_measures = [kw for kw in asset_depot.power_snapshot.values()]
+            max_instant_power = max(list_of_power_measures)
+            min_instant_power = min(list_of_power_measures)
+            avg_instant_power = sum(list_of_power_measures)/len(list_of_power_measures)
+
+            sql_template = """INSERT INTO power_stats(random_sort, n_dcfc, l2_station, vehicles, max_power, min_power, avg_power) VALUES({random_sort}, {n_dcfc}, {l2_stations}, {vehicles}, {max_power}, {min_power}, {avg_power});"""
+            sql_formatted = sql_template.format(
+                random_sort=random_sort,
+                n_dcfc=dcfc_station_count,
+                l2_stations=l2_station_count,
+                vehicles=sedan_count,
+                max_power=max_instant_power,
+                min_power=min_instant_power,
+                avg_power=avg_instant_power
+            )
+            cur.execute(sql_formatted)
             con.commit()
 
         print('simulation complete')
@@ -124,4 +155,4 @@ if __name__ == '__main__':
     dcfc_station_count = 5
     random_sort = 0
     asset_config = 'hiker_9_to_5.json'
-    single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count, dcfc_station_count, random_sort, asset_config, write_results=False)
+    single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count, dcfc_station_count, random_sort, asset_config, write_results=True)

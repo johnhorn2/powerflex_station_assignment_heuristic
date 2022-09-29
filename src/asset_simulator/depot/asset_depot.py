@@ -1,7 +1,7 @@
 from collections import namedtuple
 from datetime import datetime, timedelta
 import json
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List
 
 from pydantic import BaseModel
 import numpy as np
@@ -30,6 +30,7 @@ class AssetDepot(MsgBroker):
     l2_charging_rate_kw: float = 12
     dcfc_charging_rate_kw: float = 150
     vehicle_soc_snapshot: Dict[str, List] = {}
+    power_snapshot: Dict[datetime, float] = {}
     vehicle_status_snapshot: Dict[str, List] = {}
     departure_snapshot: Dict[str, List] = {}
 
@@ -72,6 +73,16 @@ class AssetDepot(MsgBroker):
         self.vehicle_soc_snapshot['datetime'].append(self.current_datetime)
         for vehicle in self.vehicles.values():
             self.vehicle_soc_snapshot[vehicle.id].append(vehicle.state_of_charge)
+
+            # to create a power snapshot on a meter basis
+            if vehicle.status == 'charging':
+                station = self.fleet_manager.stations[vehicle.connected_station_id]
+                try:
+                    self.power_snapshot[self.current_datetime] += station.max_power_kw
+                # initialize the dictionary entry first
+                except Exception:
+                    self.power_snapshot[self.current_datetime] = 0
+                    self.power_snapshot[self.current_datetime] += station.max_power_kw
 
 
         # add vehicle status
@@ -318,7 +329,7 @@ class AssetDepot(MsgBroker):
                     #todo: need to randomly set this
                     state_of_charge=0.8,
                     energy_capacity_kwh= vehicle_settings['kwh_capacity'],
-                    status='NA'
+                    status='parked'
                 )
                 vehicles[vehicle_idx] = vehicle
 
