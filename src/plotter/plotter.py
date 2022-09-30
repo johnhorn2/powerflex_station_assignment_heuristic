@@ -233,6 +233,71 @@ class Plotter(BaseModel):
         return x, y ,z
 
     @classmethod
+    def get_hourly_power_bar_chart(cls, df_results: pd.DataFrame, random_sort: bool, n_dcfc: int, l2_station: int, vehicles: int) -> Figure:
+
+        df_filtered = df_results[
+            (df_results['n_dcfc'] == n_dcfc) & \
+            (df_results['l2_station'] == l2_station) & \
+            (df_results['random_sort'] == random_sort) & \
+            (df_results['vehicles'] == vehicles)
+            ]
+
+
+        fig = go.Figure(data=[
+            go.Bar(x=df_filtered["hour"], y=df_filtered['max_hourly_power_kw'])
+        ],
+
+        )
+        # fig.update_layout(title='Hourly Power Draw (kW)',
+        #                   autosize=True,
+        #                   width=500, height=500,
+        #                   margin=dict(l=65, r=50, b=65, t=90),
+        #                   )
+
+        fig.update_layout(scene = dict(
+            xaxis_title='Hour of Day',
+            yaxis_title='EVSE Power (kW)',
+            # width=700,
+            # margin=dict(r=20, b=10, l=10, t=10),
+            )
+        )
+
+        fig.update_layout(
+            title={'y':0.9,
+                   'yanchor': 'top'
+                   }
+        )
+
+        fig.update_layout(
+            title='Hourly Power (kW) <br> {l2_station} L2 EVSEs | {n_dcfc} DCFCs | {vehicles} EVs'.format(
+                l2_station=l2_station,
+                n_dcfc=n_dcfc,
+                vehicles=vehicles
+            ),
+            xaxis_tickfont_size=14,
+            yaxis=dict(
+                title='Max Hourly Power (kW)',
+                titlefont_size=16,
+                tickfont_size=14,
+            ),
+            xaxis=dict(
+                title='Hour of the Day',
+                titlefont_size=16,
+                tickfont_size=14,
+            ),
+            legend=dict(
+                x=0,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0)',
+                bordercolor='rgba(255, 255, 255, 0)'
+            ),
+            barmode='group',
+            bargap=0.15,  # gap between bars of adjacent location coordinates.
+            bargroupgap=0.1  # gap between bars of the same location coordinate.
+        )
+
+        return fig
+    @classmethod
     def get_power_3d_surface_figure(cls, df_results: pd.DataFrame) -> Figure:
 
         x, y, z = cls.get_x_y_z(df_results, 'max_power')

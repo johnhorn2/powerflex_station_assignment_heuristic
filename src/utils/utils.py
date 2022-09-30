@@ -41,7 +41,6 @@ class RuntimeEnvironment(BaseModel):
         df_actual_departures = pd.DataFrame.from_dict(self.asset_simulator.departure_snapshot)
         df_actual_departures['departure_delta_minutes'] = df_actual_departures['actual_departure_datetime'] - df_actual_departures['scheduled_departure_datetime']
         df_actual_departures['departure_delta_minutes'] = pd.to_timedelta(df_actual_departures['departure_delta_minutes'])/pd.Timedelta('60s')
-        # df_reservation_assignments = pd.DataFrame.from_dict(self.asset_simulator.reservation_assignment_snapshot)
 
         flat_list_results = []
         for veh_key, veh_res_list in self.asset_simulator.reservation_assignment_snapshot.items():

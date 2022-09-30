@@ -99,6 +99,22 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
             )
             """)
 
+
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS hourly_power_stats(
+                sim_id INTEGER PRIMARY KEY,
+                random_sort INTEGER NOT NULL,
+                n_dcfc INTEGER,
+                l2_station INTEGER,
+                vehicles INTEGER,
+                meter_power_kw REAL,
+                datetime DATETIME
+            )
+            """)
+
+
+
+
             sql_template = """INSERT INTO late_departures(random_sort, vehicles, l2_station, departure_deltas, n_dcfc) VALUES({random_sort}, {vehicles}, {l2_stations}, {departure_delta}, {n_dcfc});"""
 
             # cycle through each delta
@@ -130,7 +146,22 @@ def single_run(n_days, sedan_count, suv_count, crossover_count, l2_station_count
                 avg_power=avg_instant_power
             )
             cur.execute(sql_formatted)
+
+
+            sql_template = """INSERT INTO hourly_power_stats(random_sort, n_dcfc, l2_station, vehicles, meter_power_kw, datetime) VALUES({random_sort}, {n_dcfc}, {l2_stations}, {vehicles}, {meter_power_kw}, '{datetime}');"""
+            for datetime, meter_power_kw in asset_depot.power_snapshot.items():
+                sql_formatted = sql_template.format(
+                    random_sort=random_sort,
+                    n_dcfc=dcfc_station_count,
+                    l2_stations=l2_station_count,
+                    vehicles=sedan_count,
+                    meter_power_kw=meter_power_kw,
+                    datetime=datetime
+                )
+                cur.execute(sql_formatted)
+
             con.commit()
+
 
         print('simulation complete')
 
