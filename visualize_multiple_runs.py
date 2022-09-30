@@ -1,7 +1,7 @@
 import streamlit as st
 from src.plotter.plotter import Plotter
 
-from src.plotter.plotter_data import get_departure_kpis, get_power_stats
+from src.plotter.plotter_data import get_departure_kpis, get_power_stats, get_hourly_power_stats
 
 st.set_page_config(layout="wide")
 
@@ -49,6 +49,20 @@ with st.echo(code_location='below'):
         df_power_max = df_power_stats_filtered.groupby(['vehicles', 'l2_station'])['max_power'].max().reset_index()
         fig_power, x, y, z = Plotter.get_power_3d_surface_figure(df_power_max)
 
+
+
+
         with st.container():
             st.plotly_chart(fig_kpi)
             st.plotly_chart(fig_power)
+
+        with st.container():
+            n_l2_stations = st.select_slider(label='# L2 Stations', options=x)
+            n_vehicles = st.select_slider(label='# EVs', options=y)
+
+            # Hourly Plot
+            n_dcfc = target_dcfc
+            df_hourly_power = get_hourly_power_stats()
+            fig_hourly_power = Plotter.get_hourly_power_bar_chart(df_hourly_power, random_sort, n_dcfc, n_l2_stations, n_vehicles)
+
+            st.plotly_chart(fig_hourly_power)

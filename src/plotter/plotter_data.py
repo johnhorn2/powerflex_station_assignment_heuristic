@@ -1,7 +1,6 @@
 import pandas as pd
 import sqlite3
 
-
 def get_departure_kpis(late_minute_threshold: int) -> pd.DataFrame:
     con = sqlite3.connect('test.db')
     sql = """
@@ -59,3 +58,24 @@ def get_power_stats() -> pd.DataFrame:
 
     return df
 
+def get_hourly_power_stats() -> pd.DataFrame:
+    con = sqlite3.connect('test.db')
+    sql = """
+        select  
+            random_sort, 
+            n_dcfc, 
+            l2_station, 
+            vehicles, 
+            strftime('%H', datetime) as hour, 
+            max(meter_power_kw) as max_hourly_power_kw 
+        from 
+            hourly_power_stats 
+        group by 
+            1, 2, 3, 4, 5;
+    """
+    df = pd.read_sql_query(sql, con)
+
+    # convert hour field to numeric
+    df['hour'] = pd.to_numeric(df['hour'])
+
+    return df
