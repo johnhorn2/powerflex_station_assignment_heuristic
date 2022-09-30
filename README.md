@@ -48,7 +48,7 @@ docker run -v $(pwd):/home/code -p 8080:8080 streamlit visualize_single_run.py -
 
 If running the site SLA tool
 ```
-docker run -v $(pwd):/home/code -p 8501:8501 streamlit visualize_multi_run.py
+docker run -v $(pwd):/home/code -p 8501:8501 streamlit visualize_multiple_runs.py
 ```
 
 
