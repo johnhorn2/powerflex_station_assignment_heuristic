@@ -85,7 +85,10 @@ with st.echo(code_location='below'):
 
             sqft = st.number_input(label='Building SQFT', value=8000)
 
+            # Bldg Load
             df_bldg_profile = BuildingUtils.get_bldg_load(county, bldg_type_value, sqft)
+            df_hourly_max_kwh = BuildingUtils.get_bldg_load_max_hourly_kwh(df_bldg_profile)
+            fig_bldg_load = Plotter.get_hourly_power_bar_chart_bldg(df_hourly_max_kwh, bldg_type=display_bldg_type, sqft=sqft,county=county)
 
             # Hourly Plot
             n_dcfc = target_dcfc
@@ -93,3 +96,5 @@ with st.echo(code_location='below'):
             fig_hourly_power = Plotter.get_hourly_power_bar_chart(df_hourly_power, random_sort, n_dcfc, n_l2_stations, n_vehicles)
 
             st.plotly_chart(fig_hourly_power)
+            st.plotly_chart(fig_bldg_load)
+

@@ -232,6 +232,59 @@ class Plotter(BaseModel):
 
         return x, y ,z
 
+
+    @classmethod
+    def get_hourly_power_bar_chart_bldg(cls, df_bldg: pd.DataFrame, bldg_type, sqft, county) -> Figure:
+
+        fig = go.Figure(data=[
+            go.Bar(x=df_bldg["hour"], y=df_bldg['total_kwh'])
+            ],
+        )
+
+        fig.update_layout(scene = dict(
+            xaxis_title='Hour of Day',
+            yaxis_title='Building Power (kW)',
+            # width=700,
+            # margin=dict(r=20, b=10, l=10, t=10),
+            )
+        )
+
+        fig.update_layout(
+            title={'y':0.9,
+                   'yanchor': 'top'
+                   }
+        )
+
+        fig.update_layout(
+            title='Building Hourly Power (kW) <br> Building Type: {bldg_type} | SQFT: {sqft} | County: {county}'.format(
+                bldg_type=bldg_type,
+                sqft=sqft,
+                county=county
+            ),
+            xaxis_tickfont_size=14,
+            yaxis=dict(
+                title='BLDG Max Hourly Power (kW)',
+                titlefont_size=16,
+                tickfont_size=14,
+            ),
+            xaxis=dict(
+                title='Hour of the Day',
+                titlefont_size=16,
+                tickfont_size=14,
+            ),
+            legend=dict(
+                x=0,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0)',
+                bordercolor='rgba(255, 255, 255, 0)'
+            ),
+            barmode='group',
+            bargap=0.15,  # gap between bars of adjacent location coordinates.
+            bargroupgap=0.1  # gap between bars of the same location coordinate.
+        )
+
+        return fig
+
     @classmethod
     def get_hourly_power_bar_chart(cls, df_results: pd.DataFrame, random_sort: bool, n_dcfc: int, l2_station: int, vehicles: int) -> Figure:
 
@@ -245,14 +298,8 @@ class Plotter(BaseModel):
 
         fig = go.Figure(data=[
             go.Bar(x=df_filtered["hour"], y=df_filtered['max_hourly_power_kw'])
-        ],
-
+            ],
         )
-        # fig.update_layout(title='Hourly Power Draw (kW)',
-        #                   autosize=True,
-        #                   width=500, height=500,
-        #                   margin=dict(l=65, r=50, b=65, t=90),
-        #                   )
 
         fig.update_layout(scene = dict(
             xaxis_title='Hour of Day',
@@ -269,14 +316,14 @@ class Plotter(BaseModel):
         )
 
         fig.update_layout(
-            title='Hourly Power (kW) <br> {l2_station} L2 EVSEs | {n_dcfc} DCFCs | {vehicles} EVs'.format(
+            title='EVSE Hourly Power (kW) <br> {l2_station} L2 EVSEs | {n_dcfc} DCFCs | {vehicles} EVs'.format(
                 l2_station=l2_station,
                 n_dcfc=n_dcfc,
                 vehicles=vehicles
             ),
             xaxis_tickfont_size=14,
             yaxis=dict(
-                title='Max Hourly Power (kW)',
+                title='EVSE Max Hourly Power (kW)',
                 titlefont_size=16,
                 tickfont_size=14,
             ),
