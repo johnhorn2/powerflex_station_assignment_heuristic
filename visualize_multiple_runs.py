@@ -1,7 +1,10 @@
 import streamlit as st
+
+import src.building.building
 from src.plotter.plotter import Plotter
 
 from src.plotter.plotter_data import get_departure_kpis, get_power_stats, get_hourly_power_stats
+from src.building.building import BuildingUtils
 
 st.set_page_config(layout="wide")
 
@@ -57,8 +60,32 @@ with st.echo(code_location='below'):
             st.plotly_chart(fig_power)
 
         with st.container():
-            n_l2_stations = st.select_slider(label='# L2 Stations', options=x)
-            n_vehicles = st.select_slider(label='# EVs', options=y)
+            n_l2_stations = st.select_slider(label='# L2 Stations', options=x, value=15)
+            n_vehicles = st.select_slider(label='# EVs', options=y, value=15)
+
+            county = st.text_input(label='County Name', value='San Diego')
+            building_types = {
+                'Full Service Restaurant': 'fullservicerestaurant',
+                'Hospital': 'hospital',
+                'Large Hotel': 'largehotel',
+                'Large Office': 'largeoffice',
+                'Medium Office': 'mediumoffice',
+                'Out Patient': 'outpatient',
+                'Primary School': 'primaryschool',
+                'Quick Service Restaurant': 'quickservicerestaurant',
+                'Retail Stand Alone': 'retailstandalone',
+                'Retail Strip Mall': 'retailstripmall',
+                'Secondary School': 'secondaryschool',
+                'Small Hotel': 'smallhotel',
+                'Small Office': 'smalloffice',
+                'Warehouse': 'warehouse'
+            }
+            display_bldg_type = st.selectbox(label='Building Type', options=list(building_types.keys()))
+            bldg_type_value = building_types[display_bldg_type]
+
+            sqft = st.number_input(label='Building SQFT', value=8000)
+
+            df_bldg_profile = BuildingUtils.get_bldg_load(county, bldg_type_value, sqft)
 
             # Hourly Plot
             n_dcfc = target_dcfc
